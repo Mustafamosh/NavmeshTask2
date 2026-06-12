@@ -70,7 +70,7 @@ public class AgentExitNavigator : MonoBehaviour
             agent.ResetPath();
             agent.SetDestination(selectedExit.position);
 
-            Debug.Log(gameObject.name + " moving to safest exit: " + selectedExit.name);
+            //Debug.Log(gameObject.name + " moving to safest exit: " + selectedExit.name);
         }
     }
 

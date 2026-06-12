@@ -127,7 +127,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c45c8688d618b4ed5bd3d1eb4982037b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AgentExitNavigator
-  repathInterval: 0.5
+  repathInterval: 2
   fireDangerRadius: 5
   firePenalty: 1000
 --- !u!136 &6220643544025855012
