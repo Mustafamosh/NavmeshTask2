@@ -2,71 +2,53 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // ============================================================================
-// TASK 3 — HAZARD MODEL (Unity C# port of Version 4, JS prototype)
-// Fire spread (Cellular Automata) + smoke logging (zone model fed by a
-// per-cell smoke data grid). Data layer mirrors index.js 1:1.
-//
-// Attach to an empty GameObject. Assign materials in the Inspector.
-// Ignition point is set in the Inspector (ignitionX, ignitionZ).
+// DYNAMIC HAZARD MODEL 
+// Fire spread (Cellular Automata) utilizing Physics bounds to map to a NavMesh environment.
 // ============================================================================
 public class FireSpread : MonoBehaviour
 {
-    // --- Grid / scene config ---
     [Header("Grid Setup")]
     public float cellSize = 2f;
+    [Tooltip("If true, automatically sizes the grid to cover the floorObject.")]
+    public bool autoCalculateGridSize = true;
+    [Tooltip("Used if autoCalculateGridSize is false.")]
     public int cols = 20;
-    public int rows = 20; // Z-axis. +Z side holds the doorway.
+    public int rows = 20; 
 
-    
-
-    [Header("Doorway (single source of truth)")]
-    public int doorwayZEdge; // set in Start() = rows - 1
-    public int doorwayXStart = 8;
-    public int doorwayXEnd = 11;
-
-    [Header("Ignition Point (choose where the hazard begins)")]
-    [Tooltip("Grid X coordinate of the initial fire cell")]
-    public int ignitionX = 10;
-    [Tooltip("Grid Z coordinate of the initial fire cell")]
-    public int ignitionZ = 3;
+    [Header("Environment Detection")]
+    [Tooltip("The main floor object (used for boundaries and surface height).")]
+    public GameObject floorObject;
+    [Tooltip("Select the layers that represent walls/furniture. Fire will not spread here.")]
+    public LayerMask obstacleLayer;
+    [Tooltip("Height of the check box when scanning for walls.")]
+    public float obstacleCheckHeight = 2f;
 
     [Header("Tick Rate")]
-    public float tickInterval = 0.4f; // seconds, matches setInterval(tick, 400)
+    public float tickInterval = 0.4f;
 
     [Header("Tuning Constants")]
     public float baseSpreadProb = 0.03f;
-    public Vector2 draftVector = new Vector2(0f, 0.5f); // (x, z)
+    public Vector2 draftVector = new Vector2(0f, 0.5f); 
     public float draftSpreadBonus = 0.02f;
 
-    // smoke parameters (removed)
-
-    [Header("Fire Visuals")]
+    [Header("Visual Optimization")]
+    [Tooltip("Number of logical cells per visual prefab. E.g. 4 means a 4x4 logic area gets 1 visual fire.")]
+    public int visualChunkSize = 4;
     public GameObject firePrefab;
 
-    [Header("Floor Surface")]
-    [Tooltip("Optional floor GameObject that defines the world surface where fire can spread.")]
-    public GameObject floorObject;
-    [Tooltip("When true, only cells that hit the floor object's collider will be considered valid spread cells.")]
-    public bool requireFloorSurface = false;
-    [Tooltip("Height above the floor from which to raycast downward when validating floor cells.")]
-    public float floorSurfaceRaycastHeight = 2f;
-
-    // Internal world origin for the grid (world coord of grid cell 0,0)
-    private float gridOriginX = 0f;
-    private float gridOriginZ = 0f;
-    private float floorSurfaceY = 0f;
-
     [Header("Fire Behavior")]
-    [Tooltip("When true, fire can transition from FULL_BURNING to EXTINGUISHING and eventually BURNT.")]
     public bool allowFireExtinguishing = true;
-    [Tooltip("Maximum number of active fire instances allowed in the scene. Set 0 for unlimited.")]
     public int maxFires = 100;
 
     [Header("Logging")]
     public bool enableTickLog = true;
     public int logEveryNTicks = 10;
 
-    // --- Fire states ---
+    // --- Internal State ---
+    private float gridOriginX = 0f;
+    private float gridOriginZ = 0f;
+    private float floorSurfaceY = 0f;
+
     public enum FireState
     {
         UNBURNT = 0,
@@ -74,26 +56,21 @@ public class FireSpread : MonoBehaviour
         FULL_BURNING = 2,
         EXTINGUISHING = 3,
         BURNT = 4,
-        WALL = 5,
-        DOOR = 6 // walkable opening in the boundary; vents smoke; acts as EXIT
+        WALL = 5
     }
 
-    // --- Hazard report struct (returned by IsHazardous3D) ---
     public struct HazardReport
     {
         public bool hazardous;
         public string status;
-        public float severity;   // 0..1
+        public float severity;   
     }
 
-    // --- Data grids ---
     private FireState[,] fireGrid;
-    // private float[,] smokeGrid; // smoke disabled
-    private GameObject[,] fireInstances;
+    private GameObject[,] chunkInstances;
+    private int chunkCols;
+    private int chunkRows;
 
-    // (smoke logic removed)
-
-    // --- Visual layer ---
     private float tickTimer = 0f;
     private int tickCount = 0;
     private int burningCellsCount = 0;
@@ -104,63 +81,93 @@ public class FireSpread : MonoBehaviour
         new Vector2Int(0, 1), new Vector2Int(0, -1)
     };
 
-    // ------------------------------------------------------------------
-    // SETUP
-    // ------------------------------------------------------------------
     void Start()
     {
-        // Center the grid on this GameObject so it works at any world position
-        floorSurfaceY = (floorObject != null) ? floorObject.transform.position.y : transform.position.y;
-        gridOriginX = transform.position.x - (cols * cellSize) / 2f;
-        gridOriginZ = transform.position.z - (rows * cellSize) / 2f;
-
-        doorwayZEdge = rows - 1;
+        InitializeGridBounds();
 
         fireGrid = new FireState[cols, rows];
-        // smoke grid removed
-        fireInstances = new GameObject[cols, rows];
 
-        // smoke/ceiling logic removed
+        BakeEnvironmentGrid();
+        IgniteAtTransform();
 
-        // --- Ignition point; use this GameObject's world position as the start cell ---
-        Vector3 startPos = transform.position;
-        ignitionX = Mathf.RoundToInt((startPos.x - gridOriginX) / cellSize);
-        ignitionZ = Mathf.RoundToInt((startPos.z - gridOriginZ) / cellSize);
-
-        if (IsInBounds(ignitionX, ignitionZ))
-        {
-            fireGrid[ignitionX, ignitionZ] = FireState.EARLY_BURNING;
-        }
-        else
-        {
-            Debug.LogWarning($"Ignition point ({ignitionX},{ignitionZ}) is out of bounds " +
-                             $"(cols={cols}, rows={rows}). No cell ignited.");
-        }
+        chunkCols = Mathf.CeilToInt((float)cols / visualChunkSize);
+        chunkRows = Mathf.CeilToInt((float)rows / visualChunkSize);
+        chunkInstances = new GameObject[chunkCols, chunkRows];
 
         UpdateFireSpawn();
     }
 
-    // Single source of truth for building layout.
-    // When Task 1's real floor plan is wired in, only this changes
-    // (or is replaced by sampling their BIM grid).
-    FireState LayoutCell(int x, int z)
+    // --- 1. DYNAMIC GRID SIZING ---
+    void InitializeGridBounds()
     {
-        if (!IsFloorCell(x, z)) return FireState.WALL;
-        if (x == 0 || x == cols - 1 || z == 0) return FireState.WALL;
-        if (z == doorwayZEdge)
+        if (floorObject != null)
         {
-            return (x >= doorwayXStart && x <= doorwayXEnd)
-                ? FireState.DOOR
-                : FireState.WALL;
+            floorSurfaceY = floorObject.transform.position.y;
+
+            if (autoCalculateGridSize)
+            {
+                Collider floorCollider = floorObject.GetComponent<Collider>();
+                if (floorCollider != null)
+                {
+                    Bounds b = floorCollider.bounds;
+                    cols = Mathf.CeilToInt(b.size.x / cellSize);
+                    rows = Mathf.CeilToInt(b.size.z / cellSize);
+                    gridOriginX = b.min.x;
+                    gridOriginZ = b.min.z;
+                    floorSurfaceY = b.max.y; // Top of the floor mesh
+                    return;
+                }
+            }
         }
-        return FireState.UNBURNT;
+        
+        // Fallback to manual setup centered on this GameObject
+        gridOriginX = transform.position.x - (cols * cellSize) / 2f;
+        gridOriginZ = transform.position.z - (rows * cellSize) / 2f;
     }
 
-    bool IsInBounds(int x, int z) => x >= 0 && x < cols && z >= 0 && z < rows;
+    // --- 2. DYNAMIC WALL DETECTION ---
+    void BakeEnvironmentGrid()
+    {
+        Vector3 halfExtents = new Vector3(cellSize / 2.1f, obstacleCheckHeight / 2f, cellSize / 2.1f);
 
-    // ------------------------------------------------------------------
-    // TICK LOOP — decoupled from frame rate (Unity equiv. of setInterval)
-    // ------------------------------------------------------------------
+        for (int x = 0; x < cols; x++)
+        {
+            for (int z = 0; z < rows; z++)
+            {
+                Vector3 cellCenter = CellCenter(x, z);
+                // Shift center up slightly to check above the floor
+                Vector3 checkCenter = new Vector3(cellCenter.x, floorSurfaceY + (obstacleCheckHeight / 2f), cellCenter.z);
+
+                // If the overlap box hits an obstacle (wall/furniture), mark as WALL
+                if (Physics.CheckBox(checkCenter, halfExtents, Quaternion.identity, obstacleLayer))
+                {
+                    fireGrid[x, z] = FireState.WALL;
+                }
+                else
+                {
+                    fireGrid[x, z] = FireState.UNBURNT;
+                }
+            }
+        }
+    }
+
+    // --- 3. ALIGN IGNITION TO WORLD SPACE ---
+    void IgniteAtTransform()
+    {
+        Vector3 startPos = transform.position;
+        int startX = Mathf.RoundToInt((startPos.x - gridOriginX) / cellSize);
+        int startZ = Mathf.RoundToInt((startPos.z - gridOriginZ) / cellSize);
+
+        if (IsInBounds(startX, startZ) && fireGrid[startX, startZ] != FireState.WALL)
+        {
+            fireGrid[startX, startZ] = FireState.EARLY_BURNING;
+        }
+        else
+        {
+            Debug.LogWarning("FireSpread GameObject is placed out of bounds or inside a wall! Adjust its position.");
+        }
+    }
+
     void Update()
     {
         tickTimer += Time.deltaTime;
@@ -171,40 +178,26 @@ public class FireSpread : MonoBehaviour
         }
     }
 
-    bool IsOpenCell(int x, int z)
-    {
-        if (x < 0 || x >= cols || z < 0 || z >= rows) return false;
-        return fireGrid[x, z] != FireState.WALL;
-    }
-
     Vector3 CellCenter(int x, int z)
     {
-        return new Vector3(gridOriginX + x * cellSize, floorSurfaceY + 0.01f, gridOriginZ + z * cellSize);
+        return new Vector3(gridOriginX + (x * cellSize) + (cellSize / 2f), floorSurfaceY + 0.01f, gridOriginZ + (z * cellSize) + (cellSize / 2f));
     }
 
-    bool IsFloorCell(int x, int z)
+    bool IsInBounds(int x, int z) => x >= 0 && x < cols && z >= 0 && z < rows;
+
+    bool IsOpenCell(int x, int z)
     {
         if (!IsInBounds(x, z)) return false;
-        if (!requireFloorSurface || floorObject == null) return true;
-
-        Vector3 worldPoint = new Vector3(gridOriginX + x * cellSize, floorSurfaceY + floorSurfaceRaycastHeight, gridOriginZ + z * cellSize);
-        if (Physics.Raycast(worldPoint, Vector3.down, out RaycastHit hit, floorSurfaceRaycastHeight * 2f))
-        {
-            if (hit.collider != null && (hit.collider.gameObject == floorObject || hit.collider.transform.IsChildOf(floorObject.transform)))
-                return true;
-        }
-        return false;
+        return fireGrid[x, z] != FireState.WALL;
     }
 
     bool IsIgnitable(int x, int z)
     {
-        return IsOpenCell(x, z) &&
-            (fireGrid[x, z] == FireState.UNBURNT || fireGrid[x, z] == FireState.DOOR);
+        return IsOpenCell(x, z) && fireGrid[x, z] == FireState.UNBURNT;
     }
 
     void SimulationTick()
     {
-        // ---------- 1) FIRE STATE TRANSITIONS ----------
         FireState[,] nextFireGrid = (FireState[,])fireGrid.Clone();
         burningCellsCount = 0;
 
@@ -213,13 +206,11 @@ public class FireSpread : MonoBehaviour
             for (int z = 0; z < rows; z++)
             {
                 FireState state = fireGrid[x, z];
-
                 if (state == FireState.EARLY_BURNING || state == FireState.FULL_BURNING)
                     burningCellsCount++;
 
                 if (state == FireState.EARLY_BURNING)
                 {
-                    // Only FULL_BURNING (S=2) spreads, per Sun et al.
                     if (Random.value < 0.08f) nextFireGrid[x, z] = FireState.FULL_BURNING;
                 }
                 else if (state == FireState.FULL_BURNING)
@@ -232,8 +223,7 @@ public class FireSpread : MonoBehaviour
                     foreach (var n in NEIGHBORS)
                     {
                         int nx = x + n.x, nz = z + n.y;
-                        if (IsIgnitable(nx, nz) &&
-                            (nextFireGrid[nx, nz] == FireState.UNBURNT || nextFireGrid[nx, nz] == FireState.DOOR))
+                        if (IsIgnitable(nx, nz) && nextFireGrid[nx, nz] == FireState.UNBURNT)
                         {
                             float draftInfluence = n.x * draftVector.x + n.y * draftVector.y;
                             float prob = baseSpreadProb + draftInfluence * draftSpreadBonus;
@@ -248,15 +238,9 @@ public class FireSpread : MonoBehaviour
             }
         }
 
-        // smoke logic removed
-
         fireGrid = nextFireGrid;
-
         UpdateFireSpawn();
 
-        // smoke logic removed
-
-        // --- Tick log ---
         tickCount++;
         if (enableTickLog && tickCount % logEveryNTicks == 0)
         {
@@ -267,76 +251,76 @@ public class FireSpread : MonoBehaviour
     void UpdateFireSpawn()
     {
         if (firePrefab == null) return;
-        // Count current active fires
-        int currentFires = 0;
-        for (int x = 0; x < cols; x++)
-            for (int z = 0; z < rows; z++)
-                if (fireInstances[x, z] != null) currentFires++;
 
+        bool[,] chunkShouldBurn = new bool[chunkCols, chunkRows];
         for (int x = 0; x < cols; x++)
         {
             for (int z = 0; z < rows; z++)
             {
                 FireState state = fireGrid[x, z];
-                bool shouldExist = state == FireState.EARLY_BURNING ||
-                                   state == FireState.FULL_BURNING ||
-                                   state == FireState.EXTINGUISHING;
-
-                if (shouldExist)
+                if (state == FireState.EARLY_BURNING || state == FireState.FULL_BURNING || state == FireState.EXTINGUISHING)
                 {
-                    if (fireInstances[x, z] == null)
+                    int cx = x / visualChunkSize;
+                    int cz = z / visualChunkSize;
+                    if (cx >= 0 && cx < chunkCols && cz >= 0 && cz < chunkRows)
+                        chunkShouldBurn[cx, cz] = true;
+                }
+            }
+        }
+
+        int currentFires = 0;
+        for (int cx = 0; cx < chunkCols; cx++)
+            for (int cz = 0; cz < chunkRows; cz++)
+                if (chunkInstances[cx, cz] != null) currentFires++;
+
+        for (int cx = 0; cx < chunkCols; cx++)
+        {
+            for (int cz = 0; cz < chunkRows; cz++)
+            {
+                if (chunkShouldBurn[cx, cz])
+                {
+                    if (chunkInstances[cx, cz] == null)
                     {
-                        // If maxFires <= 0 then unlimited
                         if (maxFires <= 0 || currentFires < maxFires)
                         {
-                            fireInstances[x, z] = Instantiate(firePrefab, CellCenter(x, z), Quaternion.identity, transform);
+                            float cxCenter = gridOriginX + (cx * visualChunkSize * cellSize) + ((visualChunkSize * cellSize) / 2f);
+                            float czCenter = gridOriginZ + (cz * visualChunkSize * cellSize) + ((visualChunkSize * cellSize) / 2f);
+                            Vector3 spawnPos = new Vector3(cxCenter, floorSurfaceY + 0.01f, czCenter);
+                            chunkInstances[cx, cz] = Instantiate(firePrefab, spawnPos, Quaternion.identity, transform);
                             currentFires++;
                         }
                     }
                 }
                 else
                 {
-                    if (fireInstances[x, z] != null)
+                    if (chunkInstances[cx, cz] != null)
                     {
-                        Destroy(fireInstances[x, z]);
-                        fireInstances[x, z] = null;
+                        Destroy(chunkInstances[cx, cz]);
+                        chunkInstances[cx, cz] = null;
                     }
                 }
             }
         }
     }
 
-    // ------------------------------------------------------------------
-    // PUBLIC INTERFACE FOR TASK 2 (agents)
-    // ------------------------------------------------------------------
     public HazardReport IsHazardous3D(Vector3 position)
     {
-        int gridX = Mathf.RoundToInt((position.x - gridOriginX) / cellSize);
-        int gridZ = Mathf.RoundToInt((position.z - gridOriginZ) / cellSize);
+        int gridX = Mathf.FloorToInt((position.x - gridOriginX) / cellSize);
+        int gridZ = Mathf.FloorToInt((position.z - gridOriginZ) / cellSize);
 
-        // --- Out of bounds: escaped, or invalid? ---
-        if (gridX < 0 || gridX >= cols || gridZ < 0 || gridZ >= rows)
+        // Agents that walk entirely off the mapped grid are considered safe/escaped
+        if (!IsInBounds(gridX, gridZ))
         {
-            bool exitedThroughDoor =
-                gridZ >= rows &&
-                gridX >= doorwayXStart && gridX <= doorwayXEnd;
-
-            if (exitedThroughDoor)
-            {
-                return new HazardReport { hazardous = false, status = "EXIT_REACHED", severity = 0f };
-            }
-            return new HazardReport { hazardous = true, status = "IMPASSABLE_OUT_OF_BOUNDS", severity = 1f };
+             return new HazardReport { hazardous = false, status = "OUTSIDE_HAZARD_ZONE", severity = 0f };
         }
 
         FireState floorState = fireGrid[gridX, gridZ];
 
-        // --- Solid geometry ---
         if (floorState == FireState.WALL)
         {
             return new HazardReport { hazardous = true, status = "SOLID_WALL_COLLISION", severity = 1f };
         }
 
-        // --- Direct fire (thermal) at walking height ---
         if (position.y < 1.0f)
         {
             if (floorState == FireState.FULL_BURNING)
@@ -345,12 +329,6 @@ public class FireSpread : MonoBehaviour
                 return new HazardReport { hazardous = true, status = "DIRECT_FIRE_THERMAL", severity = 0.7f };
         }
 
-        // --- Clear (smoke disabled) ---
-        return new HazardReport
-        {
-            hazardous = false,
-            status = "CLEAR_AIR",
-            severity = 0f
-        };
+        return new HazardReport { hazardous = false, status = "CLEAR_AIR", severity = 0f };
     }
 }
