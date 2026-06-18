@@ -54,7 +54,8 @@ public class AgentExitNavigator : MonoBehaviour
             float pathLength = GetPathLength(path);
             float dangerScore = GetFireDangerScore(path);
 
-            float totalScore = pathLength + dangerScore;
+            float densityScore = GetDensityScore(path);
+            float totalScore = pathLength + dangerScore + densityScore;
 
             if (totalScore < bestScore)
             {
@@ -89,6 +90,23 @@ public class AgentExitNavigator : MonoBehaviour
                 {
                     score += firePenalty;
                 }
+            }
+        }
+
+        return score;
+    }
+
+    float GetDensityScore(NavMeshPath path)
+    {
+        float score = 0f;
+
+        foreach (Vector3 corner in path.corners)
+        {
+            Collider[] nearby = Physics.OverlapSphere(corner, 2f);
+            foreach (Collider col in nearby)
+            {
+                if (col.GetComponent<AgentExitNavigator>() != null && col.gameObject != gameObject)
+                    score += 50f;
             }
         }
 
