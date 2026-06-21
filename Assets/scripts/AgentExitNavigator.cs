@@ -55,7 +55,7 @@ public class AgentExitNavigator : MonoBehaviour
             float dangerScore = GetFireDangerScore(path);
 
             float densityScore = GetDensityScore(path);
-            float totalScore = pathLength + dangerScore + densityScore;
+            float totalScore = pathLength + dangerScore; //+ densityScore;
 
             if (totalScore < bestScore)
             {

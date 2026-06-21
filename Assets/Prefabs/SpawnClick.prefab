@@ -44,5 +44,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc938f7d637ad4f3c951953b64c2338e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ClickAgentPlacer
-  agentPrefab: {fileID: 1108095528599831003, guid: bb34946f2e763418980ebe42ba6d1b07, type: 3}
+  agentPrefab: {fileID: 1108095528599831003, guid: 50da75c6e84d659459feaf5cc052e161, type: 3}
   mainCamera: {fileID: 0}
