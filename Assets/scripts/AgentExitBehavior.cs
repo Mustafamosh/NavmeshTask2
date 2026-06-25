@@ -20,6 +20,12 @@ public class AgentExitBehavior : MonoBehaviour
         {
             if (Vector3.Distance(transform.position, exit.transform.position) < exitRadius)
             {
+                AgentDataTracker tracker = GetComponent<AgentDataTracker>();
+                if (tracker != null)
+                {
+                    tracker.RecordExit();
+                }
+
                 agentsExited++;
                 Destroy(gameObject);
                 return;
