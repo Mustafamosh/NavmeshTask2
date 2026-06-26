@@ -44,6 +44,9 @@ public class FireSpread : MonoBehaviour
     public bool enableTickLog = true;
     public int logEveryNTicks = 10;
 
+    // --- Events ---
+    public event System.Action<int> OnSimulationTick;
+
     // --- Internal State ---
     private float gridOriginX = 0f;
     private float gridOriginZ = 0f;
@@ -242,6 +245,10 @@ public class FireSpread : MonoBehaviour
         UpdateFireSpawn();
 
         tickCount++;
+
+        // Broadcast the tick so sensors (DataLogger) can capture synchronous data
+        OnSimulationTick?.Invoke(tickCount);
+
         if (enableTickLog && tickCount % logEveryNTicks == 0)
         {
             Debug.Log($"[Tick {tickCount}] Burning: {burningCellsCount} cells");

@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Exit
   - Fire
+  - Agent
   layers:
   - Default
   - TransparentFX

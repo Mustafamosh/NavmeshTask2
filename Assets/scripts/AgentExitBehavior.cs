@@ -25,5 +25,14 @@ public class AgentExitBehavior : MonoBehaviour
                 return;
             }
         }
+
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Fire"))
+        {
+            Destroy(gameObject);
+        }
     }
 }

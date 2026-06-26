@@ -20,7 +20,7 @@ public class ClickAgentPlacer : MonoBehaviour
                 if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 2f, NavMesh.AllAreas))
                 {
                     Instantiate(agentPrefab, navHit.position, Quaternion.identity);
-                    Debug.Log("Agent spawned at: " + navHit.position);
+                    //Debug.Log("Agent spawned at: " + navHit.position);
                 }
                 else
                 {

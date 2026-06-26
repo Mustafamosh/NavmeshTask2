@@ -19,7 +19,7 @@ GameObject:
   - component: {fileID: 6357776143873334090}
   m_Layer: 0
   m_Name: agent-new
-  m_TagString: Untagged
+  m_TagString: Agent
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -259,6 +259,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: joe-agent
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 7aadecd32a08fb74487570a2b584c008, type: 3}
+      propertyPath: m_TagString
+      value: Agent
+      objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 7aadecd32a08fb74487570a2b584c008, type: 3}
       propertyPath: m_Controller
       value: 
@@ -348,6 +352,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 215b25d84c5dda44c82c9044bce158cf, type: 3}
       propertyPath: m_Name
       value: lewis-agent
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 215b25d84c5dda44c82c9044bce158cf, type: 3}
+      propertyPath: m_TagString
+      value: Agent
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 215b25d84c5dda44c82c9044bce158cf, type: 3}
       propertyPath: m_Controller
@@ -439,6 +447,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: josh-agent
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 8e239d1651db9f046a3b722e35ce1823, type: 3}
+      propertyPath: m_TagString
+      value: Agent
+      objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 8e239d1651db9f046a3b722e35ce1823, type: 3}
       propertyPath: m_Controller
       value: 
@@ -528,6 +540,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 38af8b087edabcb4686bf497e39cc85c, type: 3}
       propertyPath: m_Name
       value: megan-agent
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 38af8b087edabcb4686bf497e39cc85c, type: 3}
+      propertyPath: m_TagString
+      value: Agent
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 38af8b087edabcb4686bf497e39cc85c, type: 3}
       propertyPath: m_Controller
@@ -622,6 +638,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: fdb702ce71f97194aa03f45edc3c143c, type: 3}
       propertyPath: m_Name
       value: martha-agent
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: fdb702ce71f97194aa03f45edc3c143c, type: 3}
+      propertyPath: m_TagString
+      value: Agent
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: fdb702ce71f97194aa03f45edc3c143c, type: 3}
       propertyPath: m_Controller
