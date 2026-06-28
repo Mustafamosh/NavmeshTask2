@@ -21,7 +21,8 @@ public class ZoneOccupancy : MonoBehaviour
         { "Exit 2", 0 },
         { "Exit 3", 0 },
         { "Hallway 1", 0 },
-        { "Hallway 2", 0 }
+        { "Hallway 2", 0 },
+        { "Hallway 3", 0 }
     };
 
     // Track currently inside agents with their entry times
@@ -35,7 +36,8 @@ public class ZoneOccupancy : MonoBehaviour
         { "Exit 2", new Dictionary<string, float>() },
         { "Exit 3", new Dictionary<string, float>() },
         { "Hallway 1", new Dictionary<string, float>() },
-        { "Hallway 2", new Dictionary<string, float>() }
+        { "Hallway 2", new Dictionary<string, float>() },
+        { "Hallway 3", new Dictionary<string, float>() }
     };
 
     // Track nested trigger counts for agents within a zone to ignore internal transitions
@@ -49,7 +51,8 @@ public class ZoneOccupancy : MonoBehaviour
         { "Exit 2", new Dictionary<string, int>() },
         { "Exit 3", new Dictionary<string, int>() },
         { "Hallway 1", new Dictionary<string, int>() },
-        { "Hallway 2", new Dictionary<string, int>() }
+        { "Hallway 2", new Dictionary<string, int>() },
+        { "Hallway 3", new Dictionary<string, int>() }
     };
 
     // Track all entries and exits history
@@ -63,7 +66,8 @@ public class ZoneOccupancy : MonoBehaviour
         { "Exit 2", new List<AgentZoneEntry>() },
         { "Exit 3", new List<AgentZoneEntry>() },
         { "Hallway 1", new List<AgentZoneEntry>() },
-        { "Hallway 2", new List<AgentZoneEntry>() }
+        { "Hallway 2", new List<AgentZoneEntry>() },
+        { "Hallway 3", new List<AgentZoneEntry>() }
     };
 
     private static int totalAgentsExited = 0;
@@ -194,7 +198,7 @@ public class ZoneOccupancy : MonoBehaviour
         record.eventDetails = eventType == "Enter" ? "Agent entered zone" : "Agent exited zone";
 
         string path = CsvFilePath;
-        string header = "sensorId,sensorTypeString,location,timestamp,tickNumber,value,agentId,speed,hasExited,timeEnteringZone,exitTime,eventDetails,totalAgentsExited,zoneCount,mainHall,classroom,offices,bathrooms,exit1,exit2,exit3,hallway1,hallway2";
+        string header = "sensorId,sensorTypeString,location,timestamp,tickNumber,value,agentId,speed,hasExited,timeEnteringZone,exitTime,eventDetails,totalAgentsExited,zoneCount,mainHall,classroom,offices,bathrooms,exit1,exit2,exit3,hallway1,hallway2,hallway3";
         EnsureCsvHeader(path, header);
 
         string line = string.Join(",", new string[]
@@ -221,7 +225,8 @@ public class ZoneOccupancy : MonoBehaviour
             zoneCounts["Exit 2"].ToString(),
             zoneCounts["Exit 3"].ToString(),
             zoneCounts["Hallway 1"].ToString(),
-            zoneCounts["Hallway 2"].ToString()
+            zoneCounts["Hallway 2"].ToString(),
+            zoneCounts["Hallway 3"].ToString()
         });
 
         File.AppendAllText(path, line + "\n");
