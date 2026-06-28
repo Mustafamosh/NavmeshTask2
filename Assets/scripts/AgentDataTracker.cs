@@ -1,7 +1,9 @@
+// AgentDataTracker.cs —  WriteExitRecord() restored
 using UnityEngine;
 using UnityEngine.AI;
 using TMPro;
 using System.Collections.Generic;
+using System.IO;
 
 public class AgentDataTracker : MonoBehaviour
 {
@@ -66,6 +68,7 @@ public class AgentDataTracker : MonoBehaviour
             {
                 agentsTrapped++;
                 pathHistory.Add("Trapped at " + currentZone + " | T=" + Time.time.ToString("F2"));
+                WriteExitRecord();
                 Destroy(gameObject);
                 return;
             }
@@ -95,5 +98,26 @@ public class AgentDataTracker : MonoBehaviour
         hasExited = true;
         exitTime = Time.time;
         pathHistory.Add("Exited | T=" + exitTime.ToString("F2"));
+        WriteExitRecord();
+    }
+
+    private void WriteExitRecord()
+    {
+        if (string.IsNullOrEmpty(SimulationLogger.filePath)) return;
+
+        SimulationRecord record = new SimulationRecord(
+            id: "Logger",
+            type: SensorType.AgentTelemetry,
+            loc: currentZone,
+            time: Time.time,
+            tick: -1
+        );
+        record.agentId = agentId;
+        record.speed = 0f;
+        record.hasExited = hasExited;
+        record.exitTime = exitTime;
+        record.eventDetails = hasExited ? "Exited" : "Trapped";
+
+        SimulationLogger.WriteRecord(record);
     }
 }
