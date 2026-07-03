@@ -6,6 +6,14 @@ public class AgentExitNavigator : MonoBehaviour
     private NavMeshAgent agent;
     private Transform selectedExit;
 
+    [Header("Evacuation Trigger")]
+    public bool waitForTrigger = true;
+    public bool isEvacuating = false;
+
+    [Header("Fire Reaction")]
+    public float directFireReactionRadius = 6f;
+
+    [Header("Navigation")]
     public float repathInterval = 0.5f;
     public float fireDangerRadius = 5f;
     public float firePenalty = 1000f;
@@ -16,11 +24,25 @@ public class AgentExitNavigator : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         agent.autoRepath = true;
-        ChooseBestExit();
+
+        if (waitForTrigger)
+        {
+            agent.isStopped = true;
+        }
+        else
+        {
+            StartEvacuation("manual start");
+        }
     }
 
     void Update()
     {
+        if (!isEvacuating)
+        {
+            CheckFireOrAlarmTrigger();
+            return;
+        }
+
         timer += Time.deltaTime;
 
         if (timer >= repathInterval)
@@ -28,6 +50,47 @@ public class AgentExitNavigator : MonoBehaviour
             timer = 0f;
             ChooseBestExit();
         }
+    }
+
+    void CheckFireOrAlarmTrigger()
+    {
+        if (IsCloseToFire())
+        {
+            StartEvacuation("close to fire");
+            return;
+        }
+
+        if (FireAlarmSystem.Instance != null && FireAlarmSystem.Instance.alarmActive)
+        {
+            StartEvacuation("heard global alarm");
+            return;
+        }
+    }
+
+    bool IsCloseToFire()
+    {
+        GameObject[] fires = GameObject.FindGameObjectsWithTag("Fire");
+
+        foreach (GameObject fire in fires)
+        {
+            float distance = Vector3.Distance(transform.position, fire.transform.position);
+
+            if (distance <= directFireReactionRadius)
+                return true;
+        }
+
+        return false;
+    }
+
+    public void StartEvacuation(string reason)
+    {
+        if (isEvacuating) return;
+
+        isEvacuating = true;
+        agent.isStopped = false;
+        ChooseBestExit();
+
+        Debug.Log(gameObject.name + " started evacuation because: " + reason);
     }
 
     void ChooseBestExit()
@@ -54,8 +117,7 @@ public class AgentExitNavigator : MonoBehaviour
             float pathLength = GetPathLength(path);
             float dangerScore = GetFireDangerScore(path);
 
-            float densityScore = GetDensityScore(path);
-            float totalScore = pathLength + dangerScore; //+ densityScore;
+            float totalScore = pathLength + dangerScore;
 
             if (totalScore < bestScore)
             {
@@ -70,8 +132,6 @@ public class AgentExitNavigator : MonoBehaviour
             agent.isStopped = false;
             agent.ResetPath();
             agent.SetDestination(selectedExit.position);
-
-            //Debug.Log(gameObject.name + " moving to safest exit: " + selectedExit.name);
         }
     }
 
@@ -87,26 +147,7 @@ public class AgentExitNavigator : MonoBehaviour
                 float distance = Vector3.Distance(corner, fire.transform.position);
 
                 if (distance < fireDangerRadius)
-                {
                     score += firePenalty;
-                }
-            }
-        }
-
-        return score;
-    }
-
-    float GetDensityScore(NavMeshPath path)
-    {
-        float score = 0f;
-
-        foreach (Vector3 corner in path.corners)
-        {
-            Collider[] nearby = Physics.OverlapSphere(corner, 2f);
-            foreach (Collider col in nearby)
-            {
-                if (col.GetComponent<AgentExitNavigator>() != null && col.gameObject != gameObject)
-                    score += 50f;
             }
         }
 
