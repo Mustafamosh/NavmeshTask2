@@ -331,4 +331,14 @@ public class FireSpread : MonoBehaviour
 
         return new HazardReport { hazardous = false, status = "CLEAR_AIR", severity = 0f };
     }
+
+    /// <summary>
+    /// Returns how many cells are on fire this tick.
+    /// Used by the logger to record how the hazard grows over time.
+    /// </summary>
+    public int GetBurningCellsCount()
+    {
+        return burningCellsCount;
+    }
+    
 }

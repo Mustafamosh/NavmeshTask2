@@ -9,7 +9,8 @@ public enum SensorType
     ZoneOccupancy,
     SmokeDetector,
     AgentTelemetry,
-    SimulationEvent
+    SimulationEvent,
+    Hazard
 }
 
 /// <summary>
@@ -39,6 +40,10 @@ public class SimulationRecord
 
     // --- 4. Event Fields ---
     public string eventDetails;     // Text context (e.g., "Exit A Blocked by Fire")
+
+    // === 5. Hazard Fields ===
+    public float hazardSeverity;    // Fire severity at this point, 0 for clear up to 1 for full fire
+    public string hazardStatus;     // Text status, e.g. CLEAR_AIR or DIRECT_FIRE_THERMAL
 
     public SimulationRecord(string id, SensorType type, string loc, float time, int tick)
     {

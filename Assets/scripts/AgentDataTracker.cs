@@ -116,8 +116,9 @@ public class AgentDataTracker : MonoBehaviour
         record.speed = 0f;
         record.hasExited = hasExited;
         record.exitTime = exitTime;
-        record.eventDetails = hasExited ? "Exited" : "Trapped";
-
+        // Store the outcome plus the full path the agent took, so the coach can explain the route
+        record.eventDetails = (hasExited ? "Exited" : "Trapped")
+            + " | Path: " + string.Join(" > ", pathHistory);
         SimulationLogger.WriteRecord(record);
     }
 }
