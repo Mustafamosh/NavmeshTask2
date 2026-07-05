@@ -13,6 +13,7 @@ public class SimulationLogger : MonoBehaviour
     public float tickInterval = 0.4f;   // How often a set of records is written, in seconds
     public static string filePath;      // Full path to the output file, shared so other scripts can write too
     public FireSpread fireSpread;       // Reference to the fire model, dragged in from the Hierarchy
+    private bool alarmLogged = false;    // So the alarm event is written once
 
     // === 2. Exit Approach Zones ===
     // Each exit is reachable only through the zone in front of it.
@@ -92,10 +93,21 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(record);
         }
 
-        // === Smoke detector placeholder, stays zero until Fatmah's script is connected ===
-        SimulationRecord smokeRecord = new SimulationRecord("SMK-Placeholder", SensorType.SmokeDetector, "Unknown", timestamp, tickNumber);
-        smokeRecord.value = 0f;
-        WriteRecord(smokeRecord);
+        // === Smoke Detector Records, reading smoke detector nodes ===
+        SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>();
+        foreach (SmokeDetectorNode detector in detectors)
+        {
+            SimulationRecord smokeRecord = new SimulationRecord(
+                "SMK-" + detector.gameObject.name,
+                SensorType.SmokeDetector,
+                detector.nodeZone,
+                timestamp,
+                tickNumber
+            );
+            smokeRecord.value = detector.smokeReading;
+            smokeRecord.eventDetails = detector.smokeDetected ? "Smoke detected" : "Clear";
+            WriteRecord(smokeRecord);
+        }
 
         // === Global hazard, how much of the building is burning this tick ===
         if (fireSpread != null)
@@ -104,6 +116,15 @@ public class SimulationLogger : MonoBehaviour
             hazardRecord.value = fireSpread.GetBurningCellsCount();
             hazardRecord.eventDetails = "Burning cells this tick";
             WriteRecord(hazardRecord);
+        }
+
+        // === Alarm event, logged once when the global alarm first activates ===
+        if (FireAlarmSystem.Instance != null && FireAlarmSystem.Instance.alarmActive && !alarmLogged)
+        {
+            alarmLogged = true;
+            string who = FireAlarmSystem.Instance.firstDetectorName;
+            string zone = FireAlarmSystem.Instance.firstDetectorZone;
+            LogEvent("EVENT-Alarm", zone, "Global alarm started, first detector " + who + " in " + zone, timestamp, tickNumber);
         }
 
         // === Blocked exit events, based on the approach zone, not the exit block ===
