@@ -12,6 +12,7 @@ public class AgentExitNavigator : MonoBehaviour
 
     [Header("Fire Reaction")]
     public float directFireReactionRadius = 6f;
+    public float alarmHearingRadius = 2f;   // How close a sounding detector must be to be heard
 
     [Header("Navigation")]
     public float repathInterval = 0.5f;
@@ -35,7 +36,7 @@ public class AgentExitNavigator : MonoBehaviour
 
     void Update()
     {
-        // Before evacuating, wait for fire nearby or the global alarm
+        // Before evacuating, wait for fire nearby or a sounding detector nearby
         if (!isEvacuating)
         {
             CheckFireOrAlarmTrigger();
@@ -52,15 +53,17 @@ public class AgentExitNavigator : MonoBehaviour
 
     void CheckFireOrAlarmTrigger()
     {
+        // Run at once if fire is close, even with no alarm
         if (IsCloseToFire())
         {
             StartEvacuation("close to fire");
             return;
         }
 
-        if (FireAlarmSystem.Instance != null && FireAlarmSystem.Instance.alarmActive)
+        // Otherwise run only if a sounding detector is close enough to be heard
+        if (HearsNearbyAlarm())
         {
-            StartEvacuation("heard global alarm");
+            StartEvacuation("heard nearby alarm");
             return;
         }
     }
@@ -72,6 +75,20 @@ public class AgentExitNavigator : MonoBehaviour
         {
             float distance = Vector3.Distance(transform.position, fire.transform.position);
             if (distance <= directFireReactionRadius)
+                return true;
+        }
+        return false;
+    }
+
+    bool HearsNearbyAlarm()
+    {
+        SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>(FindObjectsSortMode.None);
+        foreach (SmokeDetectorNode detector in detectors)
+        {
+            if (!detector.isSounding) continue;
+
+            float distance = Vector3.Distance(transform.position, detector.transform.position);
+            if (distance <= alarmHearingRadius)
                 return true;
         }
         return false;

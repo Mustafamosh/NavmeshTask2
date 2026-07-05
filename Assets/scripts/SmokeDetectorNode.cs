@@ -5,10 +5,11 @@ public class SmokeDetectorNode : MonoBehaviour
     [Header("Public logger values")]
     public float smokeReading = 0f;
     public bool smokeDetected = false;
+    public bool isSounding = false;      // True once the building alarm is ringing
     public string nodeZone = "Main Hall";
 
     [Header("Detection")]
-    public float detectionThreshold = 0.05f;
+    public float detectionThreshold = 0.1f;
     public float scanRadius = 8f;
     public float scanStep = 1f;
 
@@ -32,6 +33,7 @@ public class SmokeDetectorNode : MonoBehaviour
         smokeReading = ScanNearbySmoke();
         smokeDetected = smokeReading >= detectionThreshold;
 
+        // The first detector to sense smoke tells the alarm system, which then rings everywhere
         if (smokeDetected && FireAlarmSystem.Instance != null)
         {
             FireAlarmSystem.Instance.RecordFirstDetector(this);

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class FireAlarmSystem : MonoBehaviour
 {
@@ -7,12 +8,17 @@ public class FireAlarmSystem : MonoBehaviour
     [Header("Alarm State")]
     public bool alarmActive = false;
 
+    [Header("Alarm Timing")]
+    public float ringDelay = 0.5f;      // Time after the first detection before all detectors ring
+
     [Header("First Detector Log")]
     public bool firstDetectorRecorded = false;
     public string firstDetectorName;
     public string firstDetectorZone;
     public float firstSmokeReading;
     public float detectionTime;
+
+    private bool alarmStarting = false;
 
     void Awake()
     {
@@ -41,34 +47,28 @@ public class FireAlarmSystem : MonoBehaviour
 
     public void TriggerAlarm()
     {
-        if (alarmActive)
+        // Only start the countdown once
+        if (alarmActive || alarmStarting)
             return;
 
-        alarmActive = true;
-
-        Debug.Log("GLOBAL FIRE ALARM ACTIVATED");
-
-        PlayAllDetectorAlarms();
-        EvacuateAllAgents();
+        alarmStarting = true;
+        StartCoroutine(RingAllAfterDelay(ringDelay));
     }
 
-    void PlayAllDetectorAlarms()
+    private IEnumerator RingAllAfterDelay(float delay)
     {
-        SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>(FindObjectsSortMode.None);
+        yield return new WaitForSeconds(delay);
 
+        alarmActive = true;
+        Debug.Log("ALL DETECTORS RINGING");
+
+        // Every detector starts sounding at the same moment.
+        // Agents decide on their own if a sounding detector is close enough to hear.
+        SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>(FindObjectsSortMode.None);
         foreach (SmokeDetectorNode detector in detectors)
         {
+            detector.isSounding = true;
             detector.PlayAlarmSound();
-        }
-    }
-
-    void EvacuateAllAgents()
-    {
-        AgentExitNavigator[] agents = FindObjectsByType<AgentExitNavigator>(FindObjectsSortMode.None);
-
-        foreach (AgentExitNavigator agent in agents)
-        {
-            agent.StartEvacuation("global alarm");
         }
     }
 }

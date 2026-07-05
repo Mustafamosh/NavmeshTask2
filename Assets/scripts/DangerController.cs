@@ -33,6 +33,10 @@ public class DangerController : MonoBehaviour
         AgentDataTracker[] agents = FindObjectsByType<AgentDataTracker>();
         foreach (AgentDataTracker agent in agents)
         {
+            AgentExitNavigator nav = agent.GetComponent<AgentExitNavigator>();
+            if (nav == null || !nav.isEvacuating)
+                continue;   // Do not touch agents who have not started evacuating
+    
             if (agent.hasExited) continue;
 
             // Find the distance to the nearest fire
@@ -46,9 +50,9 @@ public class DangerController : MonoBehaviour
             // If fire is within the danger radius, speed this agent up
             if (nearest <= dangerRadius)
             {
-                NavMeshAgent nav = agent.GetComponent<NavMeshAgent>();
-                if (nav != null && nav.speed < boostedSpeed)
-                    nav.speed = boostedSpeed;
+               NavMeshAgent navMesh = agent.GetComponent<NavMeshAgent>();
+                if (navMesh != null && navMesh.speed < boostedSpeed)
+                    navMesh.speed = boostedSpeed;
 
                 // Log the warning only the first time it happens for this agent
                 if (!alreadyWarned.Contains(agent.agentId))
