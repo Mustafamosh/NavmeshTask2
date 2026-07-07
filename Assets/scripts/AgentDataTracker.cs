@@ -1,9 +1,10 @@
-// AgentDataTracker.cs —  WriteExitRecord() restored
+// AgentDataTracker.cs
+// Consolidated: absorbs AgentExitBehavior and AgentAnimator.
+// AgentExitBehavior.cs and AgentAnimator.cs can be deleted.
 using UnityEngine;
 using UnityEngine.AI;
 using TMPro;
 using System.Collections.Generic;
-using System.IO;
 
 public class AgentDataTracker : MonoBehaviour
 {
@@ -24,11 +25,20 @@ public class AgentDataTracker : MonoBehaviour
     // --- Trapped Counter ---
     public static int agentsTrapped = 0;
 
-    // --- Fire Kill Radius ---
+    // --- Fire Kill Radius (from AgentDataTracker) ---
     public float fireKillRadius = 1.5f;
+
+    // --- Exit Detection Radius (absorbed from AgentExitBehavior) ---
+    public float exitRadius = 1.5f;
+
+    // --- Exit Counter (was in AgentExitBehavior) ---
+    public static int agentsExited = 0;
 
     // --- Private ---
     private NavMeshAgent navAgent;
+    private Animator agentAnimator;     // Absorbed from AgentAnimator
+    private GameObject[] exits;
+    private bool lifecycleEnded = false; // Guard so exit and fire-kill never both fire
 
     // --- ID Counter ---
     private static int nextId = 0;
@@ -38,6 +48,7 @@ public class AgentDataTracker : MonoBehaviour
     {
         nextId = 0;
         agentsTrapped = 0;
+        agentsExited = 0;
     }
 
     void Awake()
@@ -54,22 +65,46 @@ public class AgentDataTracker : MonoBehaviour
     void Start()
     {
         navAgent = GetComponent<NavMeshAgent>();
+
+        // Absorbed from AgentAnimator: find the Animator on a child object
+        agentAnimator = GetComponentInChildren<Animator>();
+
+        // Cache exits once at start (absorbed from AgentExitBehavior)
+        exits = GameObject.FindGameObjectsWithTag("Exit");
     }
 
     void Update()
     {
+        if (lifecycleEnded) return;
+
+        // --- Speed tracking and animation (absorbed from AgentAnimator) ---
         if (navAgent != null)
+        {
             speed = navAgent.velocity.magnitude;
 
+            if (agentAnimator != null)
+                agentAnimator.SetFloat("Speed", speed);
+        }
+
+        // --- Exit proximity check (absorbed from AgentExitBehavior) ---
+        foreach (GameObject exit in exits)
+        {
+            if (exit == null) continue;
+            if (Vector3.Distance(transform.position, exit.transform.position) < exitRadius)
+            {
+                RecordExit(exit.name);
+                return;
+            }
+        }
+
+        // --- Fire kill check ---
         GameObject[] fires = GameObject.FindGameObjectsWithTag("Fire");
         foreach (GameObject fire in fires)
         {
+            if (fire == null) continue;
             if (Vector3.Distance(transform.position, fire.transform.position) < fireKillRadius)
             {
-                agentsTrapped++;
-                pathHistory.Add("Trapped at " + currentZone + " | T=" + Time.time.ToString("F2"));
-                WriteExitRecord();
-                Destroy(gameObject);
+                RecordTrapped();
                 return;
             }
         }
@@ -88,25 +123,55 @@ public class AgentDataTracker : MonoBehaviour
     void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Zone"))
-        {
             currentZone = "Transition";
-        }
     }
 
-    public void RecordExit()
+    // Called when the agent reaches an exit.
+    // exitName tells us exactly which exit was used, so the JSONL log is specific.
+    public void RecordExit(string exitName)
     {
+        if (lifecycleEnded) return;
+        lifecycleEnded = true;
+
         hasExited = true;
         exitTime = Time.time;
-        pathHistory.Add("Exited | T=" + exitTime.ToString("F2"));
-        WriteExitRecord();
+        agentsExited++;
+
+        pathHistory.Add("Exited via " + exitName + " | T=" + exitTime.ToString("F2"));
+
+        WriteLifecycleRecord("Exited via " + exitName + " | Path: " + string.Join(" > ", pathHistory));
+        Destroy(gameObject);
     }
 
-    private void WriteExitRecord()
+    // Called when the agent is killed by fire proximity.
+    public void RecordTrapped()
+    {
+        if (lifecycleEnded) return;
+        lifecycleEnded = true;
+
+        agentsTrapped++;
+        pathHistory.Add("Trapped at " + currentZone + " | T=" + Time.time.ToString("F2"));
+
+        WriteLifecycleRecord("Trapped at " + currentZone + " | Path: " + string.Join(" > ", pathHistory));
+        Destroy(gameObject);
+    }
+
+    // Single write point for both exit and trapped outcomes.
+    // Replaces the old WriteExitRecord which was also called from AgentExitBehavior,
+    // eliminating the double-log risk.
+    private void WriteLifecycleRecord()
+    {
+        WriteLifecycleRecord(hasExited
+            ? ("Exited | Path: " + string.Join(" > ", pathHistory))
+            : ("Trapped | Path: " + string.Join(" > ", pathHistory)));
+    }
+
+    private void WriteLifecycleRecord(string details)
     {
         if (string.IsNullOrEmpty(SimulationLogger.filePath)) return;
 
         SimulationRecord record = new SimulationRecord(
-            id: "Logger",
+            id: "LIFECYCLE-" + agentId,
             type: SensorType.AgentTelemetry,
             loc: currentZone,
             time: Time.time,
@@ -116,9 +181,7 @@ public class AgentDataTracker : MonoBehaviour
         record.speed = 0f;
         record.hasExited = hasExited;
         record.exitTime = exitTime;
-        // Store the outcome plus the full path the agent took, so the coach can explain the route
-        record.eventDetails = (hasExited ? "Exited" : "Trapped")
-            + " | Path: " + string.Join(" > ", pathHistory);
+        record.eventDetails = details;
         SimulationLogger.WriteRecord(record);
     }
 }

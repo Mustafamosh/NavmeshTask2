@@ -14,7 +14,7 @@ public class UICounter : MonoBehaviour
 
     void Update()
     {
-        int exited = AgentExitBehavior.agentsExited;
+        int exited = AgentDataTracker.agentsExited; // AgentExitBehavior deleted; static moved to AgentDataTracker
         int inside = FindObjectsByType<AgentExitNavigator>().Length;
         int trapped = AgentDataTracker.agentsTrapped;
 

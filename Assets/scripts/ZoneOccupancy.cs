@@ -1,6 +1,10 @@
+// ZoneOccupancy.cs
+// Changes from previous version:
+//   - CSV output completely removed (was writing to Application.dataPath separately)
+//   - All zone entry/exit events now write to the shared JSONL via SimulationLogger.WriteRecord
+//   - This puts zone data in the same file the AI coach reads, with richer eventDetails
 using UnityEngine;
 using System.Collections.Generic;
-using System.IO;
 
 public class ZoneOccupancy : MonoBehaviour
 {
@@ -25,7 +29,6 @@ public class ZoneOccupancy : MonoBehaviour
         { "Hallway 3", 0 }
     };
 
-    // Track currently inside agents with their entry times
     private static Dictionary<string, Dictionary<string, float>> agentsInZone = new Dictionary<string, Dictionary<string, float>>
     {
         { "Main Hall", new Dictionary<string, float>() },
@@ -40,7 +43,6 @@ public class ZoneOccupancy : MonoBehaviour
         { "Hallway 3", new Dictionary<string, float>() }
     };
 
-    // Track nested trigger counts for agents within a zone to ignore internal transitions
     private static Dictionary<string, Dictionary<string, int>> agentZoneTriggerCounts = new Dictionary<string, Dictionary<string, int>>
     {
         { "Main Hall", new Dictionary<string, int>() },
@@ -55,7 +57,6 @@ public class ZoneOccupancy : MonoBehaviour
         { "Hallway 3", new Dictionary<string, int>() }
     };
 
-    // Track all entries and exits history
     private static Dictionary<string, List<AgentZoneEntry>> zoneHistory = new Dictionary<string, List<AgentZoneEntry>>
     {
         { "Main Hall", new List<AgentZoneEntry>() },
@@ -70,94 +71,114 @@ public class ZoneOccupancy : MonoBehaviour
         { "Hallway 3", new List<AgentZoneEntry>() }
     };
 
-    private static int totalAgentsExited = 0;
     private static int tickNumber = 0;
-    private static string csvFileName = "ZoneOccupancyRecords.csv";
-    private static string CsvFilePath => Path.Combine(Application.dataPath, csvFileName);
-   
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        foreach (var key in new List<string>(zoneCounts.Keys))
+        {
+            zoneCounts[key] = 0;
+            agentsInZone[key].Clear();
+            agentZoneTriggerCounts[key].Clear();
+            zoneHistory[key].Clear();
+        }
+        tickNumber = 0;
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Agent"))
+        if (!other.CompareTag("Agent")) return;
+
+        string zoneName = gameObject.name;
+        if (!zoneCounts.ContainsKey(zoneName)) return;
+
+        AgentDataTracker agentTracker = other.GetComponent<AgentDataTracker>();
+        string agentId = agentTracker != null ? agentTracker.agentId : "unknown";
+        float entryTime = Time.time;
+
+        agentZoneTriggerCounts[zoneName].TryGetValue(agentId, out int triggerCount);
+        triggerCount++;
+        agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
+
+        if (triggerCount == 1)
         {
-            string zoneName = gameObject.name;
-            if (zoneCounts.ContainsKey(zoneName) && agentsInZone.ContainsKey(zoneName))
-            {
-                // Get agent ID from AgentDataTracker script
-                AgentDataTracker agentTracker = other.GetComponent<AgentDataTracker>();
-                string agentId = agentTracker != null ? agentTracker.agentId : "unknown";
-
-                float entryTime = Time.time;
-                int triggerCount = 0;
-                agentZoneTriggerCounts[zoneName].TryGetValue(agentId, out triggerCount);
-                triggerCount++;
-                agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
-
-                if (triggerCount == 1)
-                {
-                    zoneCounts[zoneName]++;
-                    agentsInZone[zoneName][agentId] = entryTime;
-                    // Debug.Log($"Agent {agentId} entered {zoneName} at {entryTime}. Occupancy: {zoneCounts[zoneName]}");
-                    // PrintZoneStatus(zoneName);
-                    CreateZoneOccupancyRecord(zoneName, agentId, "Enter", entryTime, 0f);
-                }
-            }
+            zoneCounts[zoneName]++;
+            agentsInZone[zoneName][agentId] = entryTime;
+            WriteZoneRecord(zoneName, agentId, "Enter", entryTime, 0f);
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Agent"))
+        if (!other.CompareTag("Agent")) return;
+
+        string zoneName = gameObject.name;
+        if (!zoneCounts.ContainsKey(zoneName)) return;
+
+        AgentDataTracker agentTracker = other.GetComponent<AgentDataTracker>();
+        string agentId = agentTracker != null ? agentTracker.agentId : "unknown";
+
+        int triggerCount = agentZoneTriggerCounts[zoneName].ContainsKey(agentId)
+            ? agentZoneTriggerCounts[zoneName][agentId]
+            : 0;
+
+        if (triggerCount > 0)
         {
-            string zoneName = gameObject.name;
-            if (zoneCounts.ContainsKey(zoneName) && agentsInZone.ContainsKey(zoneName))
+            triggerCount--;
+            agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
+        }
+
+        if (triggerCount == 0)
+        {
+            zoneCounts[zoneName] = Mathf.Max(0, zoneCounts[zoneName] - 1);
+
+            float exitTime = Time.time;
+            float entryTime = 0f;
+
+            if (agentsInZone[zoneName].ContainsKey(agentId))
             {
-                // Get agent ID from AgentDataTracker script
-                AgentDataTracker agentTracker = other.GetComponent<AgentDataTracker>();
-                string agentId = agentTracker != null ? agentTracker.agentId : "unknown";
-
-                int triggerCount = agentZoneTriggerCounts[zoneName].ContainsKey(agentId) ? agentZoneTriggerCounts[zoneName][agentId] : 0;
-                if (triggerCount > 0)
+                entryTime = agentsInZone[zoneName][agentId];
+                zoneHistory[zoneName].Add(new AgentZoneEntry
                 {
-                    triggerCount--;
-                    agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
-                }
-
-                if (triggerCount == 0)
-                {
-                    zoneCounts[zoneName]--;
-                    
-                    if (agentsInZone[zoneName].ContainsKey(agentId))
-                    {
-                        float entryTime = agentsInZone[zoneName][agentId];
-                        float exitTime = Time.time;
-                        
-                        // Record in history
-                        zoneHistory[zoneName].Add(new AgentZoneEntry
-                        {
-                            agentId = agentId,
-                            entryTime = entryTime,
-                            exitTime = exitTime
-                        });
-                        
-                        agentsInZone[zoneName].Remove(agentId);
-                    }
-
-                    totalAgentsExited = AgentExitBehavior.agentsExited;
-                    float currentExitTime = Time.time;
-                    
-                    // Debug.Log($"Agent {agentId} exited {zoneName} at {currentExitTime}. Occupancy: {zoneCounts[zoneName]}");
-                    // PrintZoneStatus(zoneName);
-                    CreateZoneOccupancyRecord(zoneName, agentId, "Exit", 0f, currentExitTime);
-                }
+                    agentId = agentId,
+                    entryTime = entryTime,
+                    exitTime = exitTime
+                });
+                agentsInZone[zoneName].Remove(agentId);
             }
+
+            WriteZoneRecord(zoneName, agentId, "Exit", entryTime, exitTime);
         }
     }
 
-    private void PrintZoneStatus(string zoneName)
+    // Writes a zone event directly to the shared JSONL file via SimulationLogger.
+    // The eventDetails field is rich so the AI coach can read flow through the building.
+    private static void WriteZoneRecord(string zoneName, string agentId, string eventType, float entryTime, float exitTime)
     {
-        // Debug.Log($"--- {zoneName} Status ---");
-        // Debug.Log($"Current Count: {zoneCounts[zoneName]}");
-        // Debug.Log($"Agents Inside: {string.Join(", ", agentsInZone[zoneName].Keys)}");
+        SimulationRecord record = new SimulationRecord(
+            id: "ZONE-" + zoneName + "-" + eventType + "-" + agentId,
+            type: SensorType.ZoneOccupancy,
+            loc: zoneName,
+            time: Time.time,
+            tick: tickNumber++
+        );
+
+        record.agentId = agentId;
+        record.value = zoneCounts[zoneName];
+        record.speed = 0f;
+        record.hasExited = eventType == "Exit";
+        record.timeEnteringZone = entryTime;
+        record.exitTime = exitTime;
+
+        // Rich details for AI ingestion: who moved where, current zone population,
+        // and how long they spent in the zone on exit
+        float dwellTime = (eventType == "Exit" && entryTime > 0f) ? (exitTime - entryTime) : 0f;
+        record.eventDetails = eventType == "Enter"
+            ? agentId + " entered " + zoneName + " | Zone count now: " + zoneCounts[zoneName]
+            : agentId + " exited " + zoneName + " after " + dwellTime.ToString("F2") + "s | Zone count now: " + zoneCounts[zoneName];
+
+        SimulationLogger.WriteRecord(record);
     }
 
     public static Dictionary<string, int> GetZoneCounts()
@@ -177,78 +198,5 @@ public class ZoneOccupancy : MonoBehaviour
         if (zoneHistory.ContainsKey(zoneName))
             return new List<AgentZoneEntry>(zoneHistory[zoneName]);
         return new List<AgentZoneEntry>();
-    }
-
-    private static void CreateZoneOccupancyRecord(string zoneName, string agentId, string eventType, float entryTime, float exitTime)
-    {
-        SimulationRecord record = new SimulationRecord(
-            id: $"ZONE-{zoneName}-{eventType}",
-            type: SensorType.ZoneOccupancy,
-            loc: zoneName,
-            time: Time.time,
-            tick: tickNumber++
-        );
-
-        record.agentId = agentId;
-        record.value = zoneCounts[zoneName];
-        record.speed = 0f;
-        record.hasExited = eventType == "Exit";
-        record.timeEnteringZone = entryTime;
-        record.exitTime = exitTime;
-        record.eventDetails = eventType == "Enter" ? "Agent entered zone" : "Agent exited zone";
-
-        string path = CsvFilePath;
-        string header = "sensorId,sensorTypeString,location,timestamp,tickNumber,value,agentId,speed,hasExited,timeEnteringZone,exitTime,eventDetails,totalAgentsExited,zoneCount,mainHall,classroom,offices,bathrooms,exit1,exit2,exit3,hallway1,hallway2,hallway3";
-        EnsureCsvHeader(path, header);
-
-        string line = string.Join(",", new string[]
-        {
-            record.sensorId,
-            record.sensorTypeString,
-            record.location,
-            record.timestamp.ToString(),
-            record.tickNumber.ToString(),
-            record.value.ToString(),
-            record.agentId,
-            record.speed.ToString(),
-            record.hasExited.ToString(),
-            record.timeEnteringZone.ToString(),
-            record.exitTime.ToString(),
-            record.eventDetails,
-            totalAgentsExited.ToString(),
-            zoneCounts[zoneName].ToString(),
-            zoneCounts["Main Hall"].ToString(),
-            zoneCounts["Classroom"].ToString(),
-            zoneCounts["Offices"].ToString(),
-            zoneCounts["Bathrooms"].ToString(),
-            zoneCounts["Exit 1"].ToString(),
-            zoneCounts["Exit 2"].ToString(),
-            zoneCounts["Exit 3"].ToString(),
-            zoneCounts["Hallway 1"].ToString(),
-            zoneCounts["Hallway 2"].ToString(),
-            zoneCounts["Hallway 3"].ToString()
-        });
-
-        File.AppendAllText(path, line + "\n");
-    }
-
-    private static void EnsureCsvHeader(string path, string header)
-    {
-        if (!File.Exists(path))
-        {
-            File.WriteAllText(path, header + "\n");
-            return;
-        }
-
-        string[] existingLines = File.ReadAllLines(path);
-        if (existingLines.Length == 0 || existingLines[0] != header)
-        {
-            string backupPath = path + ".old";
-            if (File.Exists(backupPath))
-                File.Delete(backupPath);
-
-            File.Move(path, backupPath);
-            File.WriteAllText(path, header + "\n");
-        }
     }
 }
