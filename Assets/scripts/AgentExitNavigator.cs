@@ -1,3 +1,6 @@
+// AgentExitNavigator.cs
+// Change from previous version: alarmHearingRadius updated from 2 to 18
+// so agents realistically hear the building alarm.
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -12,16 +15,16 @@ public class AgentExitNavigator : MonoBehaviour
 
     [Header("Fire Reaction")]
     public float directFireReactionRadius = 6f;
-    public float alarmHearingRadius = 2f;   // How close a sounding detector must be to be heard
+    public float alarmHearingRadius = 18f;  // Updated: was 2, now 18 so agents hear the alarm across the building
 
     [Header("Navigation")]
     public float repathInterval = 0.5f;
     public float fireDangerRadius = 5f;
     public float firePenalty = 1000f;
-    public float fleeDistance = 5f;      // How far to move away when no exit is reachable
+    public float fleeDistance = 5f;         // How far to move when no exit is reachable
 
     private float timer;
-    private bool fleeLogged = false;     // So the cutoff is logged once, not every interval
+    private bool fleeLogged = false;        // The cutoff is logged once, not every interval
 
     void Start()
     {
@@ -36,7 +39,6 @@ public class AgentExitNavigator : MonoBehaviour
 
     void Update()
     {
-        // Before evacuating, wait for fire nearby or a sounding detector nearby
         if (!isEvacuating)
         {
             CheckFireOrAlarmTrigger();
@@ -53,14 +55,12 @@ public class AgentExitNavigator : MonoBehaviour
 
     void CheckFireOrAlarmTrigger()
     {
-        // Run at once if fire is close, even with no alarm
         if (IsCloseToFire())
         {
             StartEvacuation("close to fire");
             return;
         }
 
-        // Otherwise run only if a sounding detector is close enough to be heard
         if (HearsNearbyAlarm())
         {
             StartEvacuation("heard nearby alarm");
@@ -73,8 +73,7 @@ public class AgentExitNavigator : MonoBehaviour
         GameObject[] fires = GameObject.FindGameObjectsWithTag("Fire");
         foreach (GameObject fire in fires)
         {
-            float distance = Vector3.Distance(transform.position, fire.transform.position);
-            if (distance <= directFireReactionRadius)
+            if (Vector3.Distance(transform.position, fire.transform.position) <= directFireReactionRadius)
                 return true;
         }
         return false;
@@ -86,9 +85,7 @@ public class AgentExitNavigator : MonoBehaviour
         foreach (SmokeDetectorNode detector in detectors)
         {
             if (!detector.isSounding) continue;
-
-            float distance = Vector3.Distance(transform.position, detector.transform.position);
-            if (distance <= alarmHearingRadius)
+            if (Vector3.Distance(transform.position, detector.transform.position) <= alarmHearingRadius)
                 return true;
         }
         return false;
@@ -139,7 +136,6 @@ public class AgentExitNavigator : MonoBehaviour
 
         if (bestExit != null)
         {
-            // A reachable exit was found, head for it
             selectedExit = bestExit;
             agent.isStopped = false;
             agent.ResetPath();
@@ -147,7 +143,6 @@ public class AgentExitNavigator : MonoBehaviour
         }
         else
         {
-            // No exit is reachable, move away from the fire instead of freezing
             FleeFromFire();
         }
     }
@@ -181,7 +176,6 @@ public class AgentExitNavigator : MonoBehaviour
             agent.SetDestination(hit.position);
         }
 
-        // Log the cutoff once, so we know this agent lost its route and when
         if (!fleeLogged)
         {
             fleeLogged = true;
@@ -198,14 +192,9 @@ public class AgentExitNavigator : MonoBehaviour
         float score = 0f;
 
         foreach (Vector3 corner in path.corners)
-        {
             foreach (GameObject fire in fires)
-            {
-                float distance = Vector3.Distance(corner, fire.transform.position);
-                if (distance < fireDangerRadius)
+                if (Vector3.Distance(corner, fire.transform.position) < fireDangerRadius)
                     score += firePenalty;
-            }
-        }
 
         return score;
     }

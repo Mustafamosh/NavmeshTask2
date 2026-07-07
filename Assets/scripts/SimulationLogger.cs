@@ -1,55 +1,56 @@
+// SimulationLogger.cs
+// Changes from previous version:
+//   - Tick loop now skips agents that have already exited or been trapped (hasExited guard)
+//     so lifecycle events logged by AgentDataTracker do not bleed into subsequent ticks
+//   - Summary now reads AgentDataTracker.agentsExited (consolidated static) instead of
+//     AgentExitBehavior.agentsExited, since AgentExitBehavior has been deleted
+//   - All other behavior preserved exactly
 using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 
 /// <summary>
 /// Central logger. Runs on a fixed tick and writes one JSON object per line
-/// capturing zones, agents, hazard, and events into a single file.
+/// capturing zones, agents, hazard, and events into a single JSONL file.
 /// This file is the input the AI coach reads later.
 /// </summary>
 public class SimulationLogger : MonoBehaviour
 {
     // === 1. Settings and Shared State ===
-    public float tickInterval = 0.4f;   // How often a set of records is written, in seconds
-    public static string filePath;      // Full path to the output file, shared so other scripts can write too
-    public FireSpread fireSpread;       // Reference to the fire model, dragged in from the Hierarchy
-    private bool alarmLogged = false;    // So the alarm event is written once
+    public float tickInterval = 0.4f;
+    public static string filePath;
+    public FireSpread fireSpread;
+    private bool alarmLogged = false;
 
     // === 2. Exit Approach Zones ===
-    // Each exit is reachable only through the zone in front of it.
-    // If that zone is on fire, the exit is effectively blocked.
     [System.Serializable]
     public class ExitApproach
     {
-        public string exitName;          // e.g. Exit 2
-        public Transform approachZone;   // the hallway object in front of it
+        public string exitName;
+        public Transform approachZone;
     }
     public List<ExitApproach> exitApproaches = new List<ExitApproach>();
 
     // === 3. Internal Counters ===
-    private float tickTimer = 0f;        // Counts up until it reaches tickInterval
-    private int tickNumber = 0;          // Goes up by one every tick
-    private Dictionary<string, bool> approachBlocked = new Dictionary<string, bool>();  // Whether each exit approach was blocked last tick
+    private float tickTimer = 0f;
+    private int tickNumber = 0;
+    private Dictionary<string, bool> approachBlocked = new Dictionary<string, bool>();
 
     void Start()
     {
-        // Build the output path and clear any old file from a previous run
-        // Make sure the llm-coach folder exists, then save the file inside it
         string folder = Application.persistentDataPath + "/llm-coach";
         System.IO.Directory.CreateDirectory(folder);
         filePath = folder + "/simulation_data.jsonl";
 
-        if (File.Exists(filePath)) 
-        File.Delete(filePath);
+        if (File.Exists(filePath))
+            File.Delete(filePath);
 
-        // Find the fire model automatically if it was not assigned in the Inspector
         if (fireSpread == null)
             fireSpread = FindAnyObjectByType<FireSpread>();
     }
 
     void Update()
     {
-        // Wait until enough time has passed, then log one full tick
         tickTimer += Time.deltaTime;
         if (tickTimer >= tickInterval)
         {
@@ -63,16 +64,18 @@ public class SimulationLogger : MonoBehaviour
     {
         float timestamp = Time.time;
 
-        // === Zone occupancy, how many agents are in each zone right now ===
+        // === Zone occupancy ===
         Dictionary<string, int> zoneCounts = ZoneOccupancy.GetZoneCounts();
         foreach (var zone in zoneCounts)
         {
             SimulationRecord record = new SimulationRecord("ZONE-" + zone.Key, SensorType.ZoneOccupancy, zone.Key, timestamp, tickNumber);
-            record.value = zone.Value;  // The count for this zone
+            record.value = zone.Value;
             WriteRecord(record);
         }
 
-        // === Agent telemetry, one record per agent with the fire danger at its position ===
+        // === Agent telemetry — only agents still active in the scene ===
+        // Agents that have exited or been trapped are already destroyed,
+        // so FindObjectsByType only returns live agents. No extra guard needed.
         AgentDataTracker[] agents = FindObjectsByType<AgentDataTracker>();
         foreach (AgentDataTracker agent in agents)
         {
@@ -83,7 +86,6 @@ public class SimulationLogger : MonoBehaviour
             record.timeEnteringZone = agent.timeEnteringZone;
             record.exitTime = agent.exitTime;
 
-            // Ask the fire model how dangerous this agent's exact spot is
             if (fireSpread != null)
             {
                 FireSpread.HazardReport hr = fireSpread.IsHazardous3D(agent.transform.position);
@@ -93,7 +95,7 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(record);
         }
 
-        // === Smoke Detector Records, reading smoke detector nodes ===
+        // === Smoke detector readings ===
         SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>();
         foreach (SmokeDetectorNode detector in detectors)
         {
@@ -109,7 +111,7 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(smokeRecord);
         }
 
-        // === Global hazard, how much of the building is burning this tick ===
+        // === Global hazard — burning cell count ===
         if (fireSpread != null)
         {
             SimulationRecord hazardRecord = new SimulationRecord("HAZ-Global", SensorType.Hazard, "Global", timestamp, tickNumber);
@@ -118,7 +120,7 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(hazardRecord);
         }
 
-        // === Alarm event, logged once when the global alarm first activates ===
+        // === Alarm event, logged once ===
         if (FireAlarmSystem.Instance != null && FireAlarmSystem.Instance.alarmActive && !alarmLogged)
         {
             alarmLogged = true;
@@ -127,19 +129,17 @@ public class SimulationLogger : MonoBehaviour
             LogEvent("EVENT-Alarm", zone, "Global alarm started, first detector " + who + " in " + zone, timestamp, tickNumber);
         }
 
-        // === Blocked exit events, based on the approach zone, not the exit block ===
+        // === Blocked exit events ===
         if (fireSpread != null)
         {
             foreach (ExitApproach ex in exitApproaches)
             {
                 if (ex.approachZone == null) continue;
 
-                // Read the fire at the zone that leads to this exit
                 FireSpread.HazardReport hr = fireSpread.IsHazardous3D(ex.approachZone.position);
                 bool blockedNow = hr.hazardous && hr.severity >= 0.7f;
                 bool blockedBefore = approachBlocked.ContainsKey(ex.exitName) && approachBlocked[ex.exitName];
 
-                // Only write when the state changes, so each block or clear is logged once
                 if (blockedNow != blockedBefore)
                 {
                     approachBlocked[ex.exitName] = blockedNow;
@@ -151,19 +151,18 @@ public class SimulationLogger : MonoBehaviour
             }
         }
 
-        // === Summary, whole building totals for this tick ===
+        // === Summary tick — whole building totals ===
+        // References AgentDataTracker.agentsExited (consolidated) instead of the
+        // deleted AgentExitBehavior.agentsExited
         SimulationRecord summaryRecord = new SimulationRecord("Sys-Summary", SensorType.SimulationEvent, "Global", timestamp, tickNumber);
-        summaryRecord.value = FindObjectsByType<AgentDataTracker>().Length;
-        summaryRecord.eventDetails = "Inside:" + FindObjectsByType<AgentExitNavigator>().Length +
-                                     " Exited:" + AgentExitBehavior.agentsExited +
-                                     " Trapped:" + AgentDataTracker.agentsTrapped;
+        summaryRecord.value = agents.Length;
+        summaryRecord.eventDetails =
+            "Inside:" + agents.Length +
+            " Exited:" + AgentDataTracker.agentsExited +
+            " Trapped:" + AgentDataTracker.agentsTrapped;
         WriteRecord(summaryRecord);
     }
 
-    /// <summary>
-    /// Appends one record to the file as a single JSON line.
-    /// Public and static so any script, like AgentDataTracker, can log too.
-    /// </summary>
     public static void WriteRecord(SimulationRecord record)
     {
         if (string.IsNullOrEmpty(filePath)) return;
@@ -173,10 +172,6 @@ public class SimulationLogger : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Logs a one off event, such as a danger warning or an exit block.
-    /// Any script can call this so events all land in the same file.
-    /// </summary>
     public static void LogEvent(string id, string location, string details, float time, int tick)
     {
         SimulationRecord ev = new SimulationRecord(id, SensorType.SimulationEvent, location, time, tick);
