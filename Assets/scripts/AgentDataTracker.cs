@@ -140,6 +140,8 @@ public class AgentDataTracker : MonoBehaviour
         pathHistory.Add("Exited via " + exitName + " | T=" + exitTime.ToString("F2"));
 
         WriteLifecycleRecord("Exited via " + exitName + " | Path: " + string.Join(" > ", pathHistory));
+
+        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);   
         Destroy(gameObject);
     }
 
@@ -153,6 +155,8 @@ public class AgentDataTracker : MonoBehaviour
         pathHistory.Add("Trapped at " + currentZone + " | T=" + Time.time.ToString("F2"));
 
         WriteLifecycleRecord("Trapped at " + currentZone + " | Path: " + string.Join(" > ", pathHistory));
+
+        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);   
         Destroy(gameObject);
     }
 

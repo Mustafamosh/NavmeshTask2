@@ -15,7 +15,6 @@ GameObject:
   - component: {fileID: 1433841145984915707}
   - component: {fileID: 6220643544025855012}
   - component: {fileID: 2833805988152196512}
-  - component: {fileID: 948643473253835602}
   - component: {fileID: 6357776143873334090}
   - component: {fileID: 3845153845288989169}
   - component: {fileID: -6250981575679068363}
@@ -138,9 +137,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c45c8688d618b4ed5bd3d1eb4982037b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AgentExitNavigator
+  waitForTrigger: 1
+  isEvacuating: 0
+  directFireReactionRadius: 6
+  alarmHearingRadius: 18
   repathInterval: 2
   fireDangerRadius: 5
   firePenalty: 1000
+  fleeDistance: 5
 --- !u!136 &6220643544025855012
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -182,19 +186,6 @@ MonoBehaviour:
   - {fileID: 5628929628317745231}
   - {fileID: 8287903320774672593}
   - {fileID: 8771737897000474328}
---- !u!114 &948643473253835602
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1108095528599831003}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2157a5cdb3fd238419697e35f1a580f6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AgentExitBehavior
-  exitRadius: 1.5
 --- !u!114 &6357776143873334090
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -258,6 +249,7 @@ MonoBehaviour:
   exitTime: 0
   pathHistory: []
   fireKillRadius: 1.5
+  exitRadius: 1.5
 --- !u!1 &3759943121531802768
 GameObject:
   m_ObjectHideFlags: 0
