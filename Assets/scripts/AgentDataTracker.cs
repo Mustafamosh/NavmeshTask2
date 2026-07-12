@@ -171,19 +171,9 @@ public class AgentDataTracker : MonoBehaviour
 
         pathHistory.Add("Exited via " + exitName + " | T=" + exitTime.ToString("F2"));
 
-        string details =
-            "Exited via " + exitName +
-            " | Age: " + ageBand +
-            " | Disability: " + spawnDisability +
-            " | Mobility at exit: " + mobilityStatus +
-            " | Health remaining: " + health.ToString("F1") + " of " + maxHealth.ToString("F0") +
-            " | Fire damage taken: " + fireDamageTotal.ToString("F1") +
-            " | Visibility damage taken: " + visibilityDamageTotal.ToString("F1") +
-            " | Path: " + string.Join(" > ", pathHistory);
+        WriteLifecycleRecord("Exited via " + exitName + " | Path: " + string.Join(" > ", pathHistory));
 
-        WriteLifecycleRecord(details);
-
-        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);
+        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);   
         Destroy(gameObject);
     }
 
@@ -201,21 +191,9 @@ public class AgentDataTracker : MonoBehaviour
 
         pathHistory.Add("Trapped at " + currentZone + " | T=" + Time.time.ToString("F2"));
 
-        string details =
-            "Trapped at " + currentZone +
-            " | Cause: " + reason +
-            " | Age: " + ageBand +
-            " | Disability: " + spawnDisability +
-            " | Mobility at collapse: " + mobilityStatus +
-            " | Fire damage taken: " + fireDamage.ToString("F1") +
-            " | Visibility damage taken: " + visibilityDamage.ToString("F1") +
-            " | Distance to nearest fire: " + distanceToFire.ToString("F2") +
-            " | Survived: " + Time.time.ToString("F1") + " seconds" +
-            " | Path: " + string.Join(" > ", pathHistory);
+        WriteLifecycleRecord("Trapped at " + currentZone + " | Path: " + string.Join(" > ", pathHistory));
 
-        WriteLifecycleRecord(details);
-
-        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);
+        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);   
         Destroy(gameObject);
     }
 
