@@ -1,6 +1,14 @@
 // AgentExitNavigator.cs
-// Change from previous version: alarmHearingRadius updated from 2 to 18
-// so agents realistically hear the building alarm.
+//
+// Changes in this version:
+//   - Added calm pre alarm wandering. Before the alarm, agents roam to random
+//     walkable points instead of standing frozen. The moment fire or the alarm
+//     triggers them, control hands fully to the evacuation logic and the wander
+//     never runs again.
+//   - alarmHearingRadius stays at 18 so agents hear the building alarm.
+//   - This script does NOT set agent.speed. AgentNoise owns speed entirely, calm
+//     while wandering and full while evacuating, scaled by age, disability,
+//     health, and hazard band.
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -13,18 +21,28 @@ public class AgentExitNavigator : MonoBehaviour
     public bool waitForTrigger = true;
     public bool isEvacuating = false;
 
+    [Header("Pre alarm wander")]
+    public bool wanderBeforeAlarm = true;
+    [Tooltip("How far from its current position an agent looks for its next idle destination.")]
+    public float wanderRadius = 6f;
+    [Tooltip("Small pause range at each wander destination, so agents do not pace nonstop.")]
+    public float minWanderPause = 0.5f;
+    public float maxWanderPause = 3f;
+    public float wanderArriveBuffer = 0.5f;
+
     [Header("Fire Reaction")]
     public float directFireReactionRadius = 6f;
-    public float alarmHearingRadius = 18f;  // Updated: was 2, now 18 so agents hear the alarm across the building
+    public float alarmHearingRadius = 18f;
 
     [Header("Navigation")]
     public float repathInterval = 0.5f;
     public float fireDangerRadius = 5f;
     public float firePenalty = 1000f;
-    public float fleeDistance = 5f;         // How far to move when no exit is reachable
+    public float fleeDistance = 5f;
 
     private float timer;
-    private bool fleeLogged = false;        // The cutoff is logged once, not every interval
+    private float wanderPauseTimer = 0f;
+    private bool fleeLogged = false;
 
     void Start()
     {
@@ -32,15 +50,28 @@ public class AgentExitNavigator : MonoBehaviour
         agent.autoRepath = true;
 
         if (waitForTrigger)
-            agent.isStopped = true;
+        {
+            if (wanderBeforeAlarm)
+            {
+                agent.isStopped = false;
+                PickWanderDestination();
+            }
+            else
+            {
+                agent.isStopped = true;
+            }
+        }
         else
+        {
             StartEvacuation("manual start");
+        }
     }
 
     void Update()
     {
         if (!isEvacuating)
         {
+            if (wanderBeforeAlarm) WanderStep();
             CheckFireOrAlarmTrigger();
             return;
         }
@@ -52,6 +83,40 @@ public class AgentExitNavigator : MonoBehaviour
             ChooseBestExit();
         }
     }
+
+    // ---------------- Pre alarm wandering ----------------
+
+    void WanderStep()
+    {
+        // Short idle pause after arriving somewhere, so the crowd looks natural
+        // rather than every agent pacing without stopping.
+        if (wanderPauseTimer > 0f)
+        {
+            wanderPauseTimer -= Time.deltaTime;
+            if (wanderPauseTimer <= 0f)
+                PickWanderDestination();
+            return;
+        }
+
+        if (agent.pathPending) return;
+
+        if (agent.remainingDistance <= agent.stoppingDistance + wanderArriveBuffer)
+            wanderPauseTimer = Random.Range(minWanderPause, maxWanderPause);
+    }
+
+    void PickWanderDestination()
+    {
+        Vector3 random = transform.position + Random.insideUnitSphere * wanderRadius;
+        random.y = transform.position.y;
+
+        if (NavMesh.SamplePosition(random, out NavMeshHit hit, wanderRadius, NavMesh.AllAreas))
+        {
+            agent.isStopped = false;
+            agent.SetDestination(hit.position);
+        }
+    }
+
+    // ---------------- Trigger checks ----------------
 
     void CheckFireOrAlarmTrigger()
     {
@@ -70,9 +135,15 @@ public class AgentExitNavigator : MonoBehaviour
 
     bool IsCloseToFire()
     {
+        // Uses the shared fire cache when HazardSettings is present, so the whole
+        // crowd is not calling FindGameObjectsWithTag every single frame.
+        if (HazardSettings.Instance != null)
+            return HazardSettings.Instance.DistanceToNearestFire(transform.position) <= directFireReactionRadius;
+
         GameObject[] fires = GameObject.FindGameObjectsWithTag("Fire");
         foreach (GameObject fire in fires)
         {
+            if (fire == null) continue;
             if (Vector3.Distance(transform.position, fire.transform.position) <= directFireReactionRadius)
                 return true;
         }
@@ -96,11 +167,32 @@ public class AgentExitNavigator : MonoBehaviour
         if (isEvacuating) return;
 
         isEvacuating = true;
+        wanderPauseTimer = 0f;
         agent.isStopped = false;
+        agent.ResetPath();
         ChooseBestExit();
+
+        // Logged per agent so the AI knows exactly when and why each person moved.
+        AgentDataTracker tracker = GetComponent<AgentDataTracker>();
+        if (tracker != null)
+        {
+            SimulationLogger.LogEvent(
+                "EVENT-Evac-" + tracker.agentId,
+                tracker.currentZone,
+                tracker.agentId + " started evacuating because " + reason +
+                " | Age: " + tracker.ageBand +
+                " | Disability: " + tracker.spawnDisability +
+                " | Mobility: " + tracker.mobilityStatus +
+                " | Health: " + tracker.health.ToString("F1"),
+                Time.time,
+                0
+            );
+        }
 
         Debug.Log(gameObject.name + " started evacuation because: " + reason);
     }
+
+    // ---------------- Evacuation ----------------
 
     void ChooseBestExit()
     {
@@ -149,7 +241,10 @@ public class AgentExitNavigator : MonoBehaviour
 
     void FleeFromFire()
     {
-        GameObject[] fires = GameObject.FindGameObjectsWithTag("Fire");
+        GameObject[] fires = HazardSettings.Instance != null
+            ? HazardSettings.Instance.GetFires()
+            : GameObject.FindGameObjectsWithTag("Fire");
+
         if (fires.Length == 0) return;
 
         Vector3 myPos = transform.position;
@@ -158,6 +253,7 @@ public class AgentExitNavigator : MonoBehaviour
 
         foreach (GameObject fire in fires)
         {
+            if (fire == null) continue;
             float d = Vector3.Distance(myPos, fire.transform.position);
             if (d < nearest)
             {
@@ -182,19 +278,35 @@ public class AgentExitNavigator : MonoBehaviour
             AgentDataTracker tracker = GetComponent<AgentDataTracker>();
             string id = tracker != null ? tracker.agentId : gameObject.name;
             string zone = tracker != null ? tracker.currentZone : "Unknown";
-            SimulationLogger.LogEvent("EVENT-Flee-" + id, zone, id + " had no exit path, moving away from fire", Time.time, 0);
+            string extra = tracker != null
+                ? (" | Age: " + tracker.ageBand + " | Mobility: " + tracker.mobilityStatus + " | Health: " + tracker.health.ToString("F1"))
+                : "";
+
+            SimulationLogger.LogEvent(
+                "EVENT-Flee-" + id,
+                zone,
+                id + " had no exit path, moving away from fire" + extra,
+                Time.time,
+                0
+            );
         }
     }
 
     float GetFireDangerScore(NavMeshPath path)
     {
-        GameObject[] fires = GameObject.FindGameObjectsWithTag("Fire");
+        GameObject[] fires = HazardSettings.Instance != null
+            ? HazardSettings.Instance.GetFires()
+            : GameObject.FindGameObjectsWithTag("Fire");
+
         float score = 0f;
 
         foreach (Vector3 corner in path.corners)
             foreach (GameObject fire in fires)
+            {
+                if (fire == null) continue;
                 if (Vector3.Distance(corner, fire.transform.position) < fireDangerRadius)
                     score += firePenalty;
+            }
 
         return score;
     }

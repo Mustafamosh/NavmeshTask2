@@ -1,10 +1,14 @@
 // SimulationLogger.cs
-// Changes from previous version:
-//   - Tick loop now skips agents that have already exited or been trapped (hasExited guard)
-//     so lifecycle events logged by AgentDataTracker do not bleed into subsequent ticks
-//   - Summary now reads AgentDataTracker.agentsExited (consolidated static) instead of
-//     AgentExitBehavior.agentsExited, since AgentExitBehavior has been deleted
-//   - All other behavior preserved exactly
+//
+// CHANGES IN THIS VERSION
+//   - The log file is now opened in Awake instead of Start. Previously agents ran
+//     their Start before the logger ran its own, so SimulationLogger.filePath was
+//     still empty and every spawn PROFILE record was silently thrown away. Opening
+//     the file in Awake means the path exists before any agent needs it.
+//   - The vulnerability count now matches the simplified disability model, so it
+//     counts elderly agents, agents using a mobility aid, and agents that have
+//     become injured.
+//   - All existing behavior is preserved.
 using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
@@ -36,15 +40,20 @@ public class SimulationLogger : MonoBehaviour
     private int tickNumber = 0;
     private Dictionary<string, bool> approachBlocked = new Dictionary<string, bool>();
 
-    void Start()
+    // The file must exist before any agent Start runs, otherwise spawn profile
+    // records are dropped. Awake is the earliest safe place to do this.
+    void Awake()
     {
         string folder = Application.persistentDataPath + "/llm-coach";
-        System.IO.Directory.CreateDirectory(folder);
+        Directory.CreateDirectory(folder);
         filePath = folder + "/simulation_data.jsonl";
 
         if (File.Exists(filePath))
             File.Delete(filePath);
+    }
 
+    void Start()
+    {
         if (fireSpread == null)
             fireSpread = FindAnyObjectByType<FireSpread>();
     }
@@ -73,18 +82,41 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(record);
         }
 
-        // === Agent telemetry — only agents still active in the scene ===
-        // Agents that have exited or been trapped are already destroyed,
-        // so FindObjectsByType only returns live agents. No extra guard needed.
+        // === Agent telemetry, only agents still active in the scene ===
         AgentDataTracker[] agents = FindObjectsByType<AgentDataTracker>();
+
+        int vulnerableInside = 0;   // elderly, using a mobility aid, or injured
+        int criticalHealth = 0;     // below one third health and still inside
+
         foreach (AgentDataTracker agent in agents)
         {
             SimulationRecord record = new SimulationRecord("Logger", SensorType.AgentTelemetry, agent.currentZone, timestamp, tickNumber);
+
             record.agentId = agent.agentId;
             record.speed = agent.speed;
             record.hasExited = agent.hasExited;
             record.timeEnteringZone = agent.timeEnteringZone;
             record.exitTime = agent.exitTime;
+
+            // Per agent context for the AI coach.
+            record.ageBand = agent.ageBand;
+            record.disability = agent.spawnDisability;
+            record.mobilityStatus = agent.mobilityStatus;
+            record.health = agent.health;
+            record.maxHealth = agent.maxHealth;
+            record.hazardBand = agent.hazardBand;
+            record.distanceToFire = agent.distanceToFire;
+            record.fireDamageTotal = agent.fireDamageTotal;
+            record.visibilityDamageTotal = agent.visibilityDamageTotal;
+
+            record.eventDetails =
+                agent.agentId +
+                " | Age: " + agent.ageBand +
+                " | Disability: " + agent.spawnDisability +
+                " | Mobility: " + agent.mobilityStatus +
+                " | Health: " + agent.health.ToString("F1") +
+                " | Hazard: " + agent.hazardBand +
+                " | Zone: " + agent.currentZone;
 
             if (fireSpread != null)
             {
@@ -92,7 +124,16 @@ public class SimulationLogger : MonoBehaviour
                 record.hazardSeverity = hr.severity;
                 record.hazardStatus = hr.status;
             }
+
             WriteRecord(record);
+
+            bool isVulnerable =
+                agent.ageBand == "Elderly" ||
+                agent.spawnDisability == "MobilityAid" ||
+                agent.mobilityStatus.Contains("Injured");
+
+            if (isVulnerable) vulnerableInside++;
+            if (agent.maxHealth > 0f && agent.health / agent.maxHealth < 0.33f) criticalHealth++;
         }
 
         // === Smoke detector readings ===
@@ -111,7 +152,7 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(smokeRecord);
         }
 
-        // === Global hazard — burning cell count ===
+        // === Global hazard, burning cell count ===
         if (fireSpread != null)
         {
             SimulationRecord hazardRecord = new SimulationRecord("HAZ-Global", SensorType.Hazard, "Global", timestamp, tickNumber);
@@ -151,15 +192,15 @@ public class SimulationLogger : MonoBehaviour
             }
         }
 
-        // === Summary tick — whole building totals ===
-        // References AgentDataTracker.agentsExited (consolidated) instead of the
-        // deleted AgentExitBehavior.agentsExited
+        // === Summary tick, whole building totals ===
         SimulationRecord summaryRecord = new SimulationRecord("Sys-Summary", SensorType.SimulationEvent, "Global", timestamp, tickNumber);
         summaryRecord.value = agents.Length;
         summaryRecord.eventDetails =
             "Inside:" + agents.Length +
             " Exited:" + AgentDataTracker.agentsExited +
-            " Trapped:" + AgentDataTracker.agentsTrapped;
+            " Trapped:" + AgentDataTracker.agentsTrapped +
+            " VulnerableStillInside:" + vulnerableInside +
+            " CriticalHealthStillInside:" + criticalHealth;
         WriteRecord(summaryRecord);
     }
 
