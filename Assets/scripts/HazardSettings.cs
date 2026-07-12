@@ -1,12 +1,18 @@
 // HazardSettings.cs
-// NEW FILE-- PhaseIII
 // One place in the scene that owns the hazard rings and the drain rates.
 // Every agent reads from this at runtime, so you can drag the sliders while the
-// simulation is playing and watch the behaviour change live across all agents.
+// simulation is playing and watch the whole crowd respond live.
 //
-// There is no smoke in the scene yet. Low visibility is therefore modelled as a
-// wide ring around anything tagged Fire. When real smoke arrives later, only the
-// visibility branch in AgentNoise needs to change. Nothing else moves.
+// RETUNED IN THIS VERSION
+//   - Drain rates cut hard, so agents degrade slowly and get trapped gradually
+//     instead of collapsing within a few seconds.
+//   - Low visibility ring pulled in close to the fire, since smoke should not
+//     reach halfway across the building.
+//   - Speed penalties softened, so agents near fire slow down but do not crawl.
+//
+// There is no smoke object in the scene yet. Low visibility is modelled as a
+// ring around anything tagged Fire. When real smoke arrives, only the
+// visibility branch inside AgentNoise needs to change.
 using UnityEngine;
 
 public class HazardSettings : MonoBehaviour
@@ -14,24 +20,29 @@ public class HazardSettings : MonoBehaviour
     public static HazardSettings Instance;
 
     [Header("Hazard rings, measured from the nearest object tagged Fire")]
-    [Tooltip("Inside the fire. Strongest ring.")]
-    public float inFireRadius = 1.5f;
+    [Tooltip("Inside the fire. Strongest band.")]
+    public float inFireRadius = 1.2f;
 
     [Tooltip("Right next to the fire.")]
-    public float nearFireRadius = 3.5f;
+    public float nearFireRadius = 2.5f;
 
-    [Tooltip("Stand in for low visibility smoke until real smoke exists.")]
-    public float lowVisibilityRadius = 7f;
+    [Tooltip("Low visibility. Kept tight, smoke should hug the fire.")]
+    public float lowVisibilityRadius = 4f;
 
     [Header("Health drain, fraction of max health lost per second")]
-    [Range(0f, 1f)] public float inFireDrainPerSec = 0.40f;
-    [Range(0f, 1f)] public float nearFireDrainPerSec = 0.20f;
-    [Range(0f, 1f)] public float lowVisibilityDrainPerSec = 0.05f;
+    [Tooltip("At 0.15 an agent standing in the fire survives about 7 seconds.")]
+    [Range(0f, 1f)] public float inFireDrainPerSec = 0.15f;
 
-    [Header("Speed penalty while inside each ring, multiplies agent speed")]
-    [Range(0.1f, 1f)] public float inFireSpeedFactor = 0.50f;
-    [Range(0.1f, 1f)] public float nearFireSpeedFactor = 0.75f;
-    [Range(0.1f, 1f)] public float lowVisibilitySpeedFactor = 0.90f;
+    [Tooltip("At 0.07 an agent beside the fire survives about 14 seconds.")]
+    [Range(0f, 1f)] public float nearFireDrainPerSec = 0.07f;
+
+    [Tooltip("At 0.02 low visibility alone takes about 50 seconds to trap someone.")]
+    [Range(0f, 1f)] public float lowVisibilityDrainPerSec = 0.02f;
+
+    [Header("Speed penalty while inside each band, multiplies agent speed")]
+    [Range(0.1f, 1f)] public float inFireSpeedFactor = 0.80f;
+    [Range(0.1f, 1f)] public float nearFireSpeedFactor = 0.90f;
+    [Range(0.1f, 1f)] public float lowVisibilitySpeedFactor = 0.95f;
 
     [Header("Performance")]
     [Tooltip("How often the shared fire list is refreshed, in seconds.")]
@@ -48,7 +59,7 @@ public class HazardSettings : MonoBehaviour
 
     void Update()
     {
-        // Sanity guard so the rings never cross over each other in the Inspector.
+        // Sanity guard so the rings can never cross over each other in the Inspector.
         nearFireRadius = Mathf.Max(nearFireRadius, inFireRadius);
         lowVisibilityRadius = Mathf.Max(lowVisibilityRadius, nearFireRadius);
 
@@ -62,8 +73,8 @@ public class HazardSettings : MonoBehaviour
 
     void RefreshFireCache()
     {
-        // FireSpread spawns its fire chunks at runtime, so this list must be
-        // refreshed rather than cached once at Start.
+        // FireSpread spawns and destroys fire chunks at runtime, so this list must
+        // be refreshed rather than cached once at startup.
         cachedFires = GameObject.FindGameObjectsWithTag("Fire");
     }
 

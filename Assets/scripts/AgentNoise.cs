@@ -1,22 +1,21 @@
 // AgentNoise.cs
-// This file is now the per agent profile and health hub.
+// The per agent profile and health hub.
 //
 // It holds the age band, the spawn disability, and a live health value.
 // Health drains from three hazard bands, all measured as pure distance to the
-// nearest object tagged Fire, because there is no smoke in the scene yet.
+// nearest object tagged Fire, because there is no smoke object in the scene yet.
+// The strongest band wins, so the drains never stack.
 //
-//   Inside the fire        40 percent of max health per second
-//   Next to the fire       20 percent of max health per second
-//   Low visibility ring     5 percent of max health per second
-//
-// The strongest band wins, so an agent inside the fire takes 40 and not 40 plus
-// 20 plus 5. All three bands also slow the agent down.
-//
-// When health reaches zero the agent is trapped through AgentDataTracker, and
-// the log records whether fire damage or low visibility damage did more harm.
-//
-// Speed is calm while wandering before the alarm and full while evacuating, and
-// is scaled by age, by spawn disability, by current health, and by hazard band.
+// CHANGES IN THIS VERSION
+//   - Disability is simplified. There is now only None or MobilityAid at spawn.
+//     The wheelchair category is gone.
+//   - Being hurt is now its own status. A healthy agent is Able, and as health
+//     falls it becomes Injured and then SeverelyInjured. An agent that spawned
+//     with a mobility aid and then gets hurt is reported as MobilityAid Injured,
+//     so the log always shows both facts.
+//   - Health drains far more slowly, so agents degrade and get trapped gradually.
+//   - The speed floor at low health is raised, so injured agents move slowly but
+//     do not crawl.
 //
 // When real smoke is added later, only ReadHazardBand needs to change.
 using UnityEngine;
@@ -36,7 +35,7 @@ public class AgentNoise : MonoBehaviour
     [Tooltip("Speed multiplier per age band. Elderly agents move slower.")]
     public float youngSpeedFactor = 1.10f;
     public float adultSpeedFactor = 1.00f;
-    public float elderlySpeedFactor = 0.65f;
+    public float elderlySpeedFactor = 0.70f;
 
     [Header("Age spawn weights, they do not need to add up to 1")]
     public float youngWeight = 0.25f;
@@ -46,16 +45,16 @@ public class AgentNoise : MonoBehaviour
     // ==========================================================
     // Disability at spawn
     // ==========================================================
-    public enum Disability { None, MobilityAid, Wheelchair }
+    public enum Disability { None, MobilityAid }
 
     [Header("Disability at spawn")]
     public Disability spawnDisability = Disability.None;
 
-    [Range(0f, 1f)] public float mobilityAidChance = 0.12f;
-    [Range(0f, 1f)] public float wheelchairChance = 0.06f;
+    [Tooltip("Chance an agent spawns already using a mobility aid.")]
+    [Range(0f, 1f)] public float mobilityAidChance = 0.15f;
 
-    public float mobilityAidFactor = 0.70f;
-    public float wheelchairFactor = 0.55f;
+    [Tooltip("Speed multiplier for an agent using a mobility aid.")]
+    public float mobilityAidFactor = 0.65f;
 
     // ==========================================================
     // Health
@@ -64,13 +63,19 @@ public class AgentNoise : MonoBehaviour
     public float maxHealth = 100f;
     public float health = 100f;
 
+    [Tooltip("Below this fraction of max health the agent is reported as Injured.")]
+    [Range(0f, 1f)] public float injuredThreshold = 0.70f;
+
+    [Tooltip("Below this fraction of max health the agent is reported as SeverelyInjured.")]
+    [Range(0f, 1f)] public float severelyInjuredThreshold = 0.35f;
+
     [Header("Fallback hazard values, used only if no HazardSettings is in the scene")]
-    public float fallbackInFireRadius = 1.5f;
-    public float fallbackNearFireRadius = 3.5f;
-    public float fallbackLowVisibilityRadius = 7f;
-    public float fallbackInFireDrain = 0.40f;
-    public float fallbackNearFireDrain = 0.20f;
-    public float fallbackLowVisibilityDrain = 0.05f;
+    public float fallbackInFireRadius = 1.2f;
+    public float fallbackNearFireRadius = 2.5f;
+    public float fallbackLowVisibilityRadius = 4f;
+    public float fallbackInFireDrain = 0.15f;
+    public float fallbackNearFireDrain = 0.07f;
+    public float fallbackLowVisibilityDrain = 0.02f;
 
     // ==========================================================
     // Speed
@@ -83,8 +88,8 @@ public class AgentNoise : MonoBehaviour
     [Tooltip("Wander speed as a fraction of this agent evacuation speed.")]
     [Range(0.1f, 1f)] public float wanderSpeedFactor = 0.45f;
 
-    [Tooltip("Lowest speed multiplier at zero health, so injured agents crawl rather than freeze.")]
-    [Range(0.1f, 1f)] public float minHealthSpeedFactor = 0.35f;
+    [Tooltip("Speed multiplier at zero health. Raised so hurt agents keep moving.")]
+    [Range(0.1f, 1f)] public float minHealthSpeedFactor = 0.60f;
 
     [Tooltip("Roll the profile in Awake rather than Start.")]
     public bool randomizeOnAwake = true;
@@ -116,6 +121,7 @@ public class AgentNoise : MonoBehaviour
     private float localCacheTimer = 0f;
     private const float localCacheInterval = 0.25f;
 
+    private bool profileRolled = false;
     private bool trapped = false;
 
     void Awake()
@@ -132,14 +138,18 @@ public class AgentNoise : MonoBehaviour
         if (!randomizeOnAwake) RollProfile();
 
         health = maxHealth;
+        UpdateMobilityStatus();
         ApplySpeed();
     }
 
     // ----------------------------------------------------------
-    // Profile roll
+    // Profile roll, guarded so it can only ever happen once
     // ----------------------------------------------------------
     void RollProfile()
     {
+        if (profileRolled) return;
+        profileRolled = true;
+
         // Weighted age band. A later scenario control can rewrite these weights
         // before spawn to set how many young, adult, and elderly agents appear.
         float total = Mathf.Max(0.0001f, youngWeight + adultWeight + elderlyWeight);
@@ -149,11 +159,10 @@ public class AgentNoise : MonoBehaviour
         else if (r < youngWeight + adultWeight) ageBand = AgeBand.Adult;
         else ageBand = AgeBand.Elderly;
 
-        // Spawn disability.
-        float disRoll = Random.value;
-        if (disRoll < wheelchairChance) spawnDisability = Disability.Wheelchair;
-        else if (disRoll < wheelchairChance + mobilityAidChance) spawnDisability = Disability.MobilityAid;
-        else spawnDisability = Disability.None;
+        // Spawn disability. Only two options now, none or a mobility aid.
+        spawnDisability = Random.value < mobilityAidChance
+            ? Disability.MobilityAid
+            : Disability.None;
 
         // Evacuation speed roll, then scaled by age.
         if (minSpeed > maxSpeed) { float t = minSpeed; minSpeed = maxSpeed; maxSpeed = t; }
@@ -173,12 +182,7 @@ public class AgentNoise : MonoBehaviour
 
     float SpawnDisabilityFactor()
     {
-        switch (spawnDisability)
-        {
-            case Disability.MobilityAid: return mobilityAidFactor;
-            case Disability.Wheelchair: return wheelchairFactor;
-            default: return 1f;
-        }
+        return spawnDisability == Disability.MobilityAid ? mobilityAidFactor : 1f;
     }
 
     // ----------------------------------------------------------
@@ -202,7 +206,7 @@ public class AgentNoise : MonoBehaviour
 
     /// <summary>
     /// Pure distance hazard read. No smoke grid is used, because there is no
-    /// smoke in the scene. When smoke is added later, replace only the
+    /// smoke object in the scene. When smoke is added later, replace only the
     /// LowVisibility branch below with a smoke lookup and leave the rest alone.
     /// </summary>
     HazardBand ReadHazardBand()
@@ -278,17 +282,26 @@ public class AgentNoise : MonoBehaviour
             dominantHazard = fireDamageTotal >= visibilityDamageTotal ? "Fire" : "LowVisibility";
     }
 
+    /// <summary>
+    /// Reports the effective mobility of the agent. A spawn mobility aid and an
+    /// injury are separate facts, so an agent can be both at once and the log
+    /// will say so.
+    /// </summary>
     void UpdateMobilityStatus()
     {
-        // A spawn disability sets the label. Otherwise falling health pushes an
-        // able agent toward impaired, which is the disability from injury case.
-        if (spawnDisability == Disability.Wheelchair) { mobilityStatus = "Wheelchair"; return; }
-        if (spawnDisability == Disability.MobilityAid) { mobilityStatus = "MobilityAid"; return; }
+        float pct = maxHealth > 0f ? health / maxHealth : 0f;
 
-        float pct = health / maxHealth;
-        if (pct > 0.66f) mobilityStatus = "Able";
-        else if (pct > 0.33f) mobilityStatus = "Impaired";
-        else mobilityStatus = "SeverelyImpaired";
+        string injury;
+        if (pct > injuredThreshold) injury = "";
+        else if (pct > severelyInjuredThreshold) injury = "Injured";
+        else injury = "SeverelyInjured";
+
+        bool aided = spawnDisability == Disability.MobilityAid;
+
+        if (aided && injury != "") mobilityStatus = "MobilityAid " + injury;
+        else if (aided) mobilityStatus = "MobilityAid";
+        else if (injury != "") mobilityStatus = injury;
+        else mobilityStatus = "Able";
     }
 
     void ApplySpeed()
@@ -298,7 +311,7 @@ public class AgentNoise : MonoBehaviour
         bool evacuating = navigator != null && navigator.isEvacuating;
         float regime = evacuating ? baseEvacSpeed : baseEvacSpeed * wanderSpeedFactor;
 
-        float healthFactor = Mathf.Lerp(minHealthSpeedFactor, 1f, health / maxHealth);
+        float healthFactor = Mathf.Lerp(minHealthSpeedFactor, 1f, maxHealth > 0f ? health / maxHealth : 0f);
 
         float hazardFactor = 1f;
         if (hs != null)
@@ -312,7 +325,7 @@ public class AgentNoise : MonoBehaviour
         }
 
         float finalSpeed = regime * SpawnDisabilityFactor() * healthFactor * hazardFactor;
-        agent.speed = Mathf.Max(0.2f, finalSpeed);
+        agent.speed = Mathf.Max(0.5f, finalSpeed);
     }
 
     void TriggerTrapped()

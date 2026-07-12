@@ -1,3 +1,18 @@
+// FireSpread.cs
+//
+// CHANGE IN THIS VERSION
+//   One addition only. A new public method GetHeatLevel(Vector3) reports how much
+//   fire heat is present at a world position, checking that cell AND the eight
+//   cells around it.
+//
+//   The neighbour check is the important part. BakeEnvironmentGrid marks any cell
+//   containing a wall as FireState.WALL, and wall cells are never ignitable, so a
+//   wall cell never burns. If BurnableSurface only read the cell a wall sits in, it
+//   would always read zero and walls would never scorch. Reading the surrounding
+//   cells is what lets a wall char from the fire burning next to it.
+//
+//   Nothing else in this file changed. The fire model, the smoke model, the grid,
+//   and the visuals are all exactly as they were.
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -369,6 +384,67 @@ public class FireSpread : MonoBehaviour
             return Mathf.Max(smokeGrid[gridX, gridZ], 0.4f);
 
         return smokeGrid[gridX, gridZ];
+    }
+
+    // ==========================================================
+    // NEW: heat lookup for scorching surfaces
+    // ==========================================================
+
+    /// <summary>
+    /// How much fire heat is present at a world position, from 0 for no heat up to
+    /// 1 for a fully burning cell.
+    ///
+    /// This checks the cell at the position AND the eight cells surrounding it.
+    /// The surrounding check exists because a wall always sits in a cell marked
+    /// FireState.WALL, and wall cells never ignite, so a wall would otherwise read
+    /// zero heat forever and never scorch. Reading the neighbours lets a wall char
+    /// from the fire burning beside it.
+    ///
+    /// A cell that has already finished burning returns no heat, since char is
+    /// permanent and is stored on the surface itself rather than recomputed here.
+    /// </summary>
+    public float GetHeatLevel(Vector3 position)
+    {
+        if (fireGrid == null) return 0f;
+
+        int gridX = Mathf.FloorToInt((position.x - gridOriginX) / cellSize);
+        int gridZ = Mathf.FloorToInt((position.z - gridOriginZ) / cellSize);
+
+        float highest = 0f;
+
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                int nx = gridX + dx;
+                int nz = gridZ + dz;
+
+                if (!IsInBounds(nx, nz)) continue;
+
+                float heat = HeatForState(fireGrid[nx, nz]);
+
+                // The cell the surface actually sits in counts fully. Neighbouring
+                // cells count for slightly less, so a wall directly in the fire
+                // blackens faster than one merely beside it.
+                if (dx != 0 || dz != 0)
+                    heat *= 0.8f;
+
+                if (heat > highest) highest = heat;
+            }
+        }
+
+        return highest;
+    }
+
+    private float HeatForState(FireState state)
+    {
+        switch (state)
+        {
+            case FireState.FULL_BURNING: return 1.0f;
+            case FireState.EARLY_BURNING: return 0.6f;
+            case FireState.EXTINGUISHING: return 0.4f;
+            default: return 0f;   // UNBURNT, BURNT, and WALL give off no heat
+        }
     }
 
     public HazardReport IsHazardous3D(Vector3 position)

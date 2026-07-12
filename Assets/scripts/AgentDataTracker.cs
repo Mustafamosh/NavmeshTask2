@@ -1,18 +1,17 @@
 // AgentDataTracker.cs
 // Consolidated: absorbs AgentExitBehavior and AgentAnimator.
 //
-// Changes in this version:
-//   - The instant fire kill (fireKillRadius) is REMOVED. Fire, near fire, and low
-//     visibility now drain health inside AgentNoise, which calls RecordTrapped
-//     when health reaches zero. An agent is no longer deleted the moment it
-//     touches fire, it degrades first.
-//   - RecordTrapped now takes the dominant cause plus the exact fire damage and
-//     visibility damage totals, so the JSONL says not only that the agent was
-//     trapped but WHY, and by how much of each hazard.
-//   - Mirrors age, spawn disability, effective mobility, health, hazard band, and
-//     distance to fire from AgentNoise, so the logger reads one clean surface.
-//   - Writes a one time PROFILE record at spawn so the AI knows who each agent is
-//     before anything happens to them.
+// CHANGES IN THIS VERSION
+//   - The spawn PROFILE record is no longer dropped. In the previous run zero
+//     profile records were written, because agents spawned before
+//     SimulationLogger had set its file path, and WriteProfileRecord returned
+//     early. It now retries every frame until the logger is ready, then writes
+//     once and stops.
+//   - Disability is simplified to None or MobilityAid. Injury is reported
+//     separately through mobilityStatus, so an agent can be recorded as both
+//     using a mobility aid and injured at the same time.
+//   - Fire is not an instant kill. AgentNoise drains health from the fire, near
+//     fire, and low visibility bands, and calls RecordTrapped at zero health.
 using UnityEngine;
 using UnityEngine.AI;
 using TMPro;
@@ -38,7 +37,7 @@ public class AgentDataTracker : MonoBehaviour
     public float health = 100f;
     public float maxHealth = 100f;
     public string hazardBand = "Clear";
-    public float distanceToFire = 0f;
+    public float distanceToFire = -1f;
     public float fireDamageTotal = 0f;
     public float visibilityDamageTotal = 0f;
     public string trapReason = "None";
@@ -59,6 +58,7 @@ public class AgentDataTracker : MonoBehaviour
     private AgentNoise profile;          // Source of truth for age, disability, health
     private GameObject[] exits;
     private bool lifecycleEnded = false; // Guard so exit and trap never both fire
+    private bool profileWritten = false; // Guard so the spawn record writes exactly once
 
     // --- ID Counter ---
     private static int nextId = 0;
@@ -92,12 +92,15 @@ public class AgentDataTracker : MonoBehaviour
         exits = GameObject.FindGameObjectsWithTag("Exit");
 
         MirrorProfile();
-        WriteProfileRecord();
+        TryWriteProfileRecord();
     }
 
     void Update()
     {
         if (lifecycleEnded) return;
+
+        // Retry the spawn record until the logger has opened its file.
+        if (!profileWritten) TryWriteProfileRecord();
 
         // --- Speed tracking and animation (absorbed from AgentAnimator) ---
         if (navAgent != null)
@@ -121,9 +124,8 @@ public class AgentDataTracker : MonoBehaviour
             }
         }
 
-        // NOTE: fire is no longer an instant kill here. AgentNoise drains health
-        // from the fire, near fire, and low visibility bands, and calls
-        // RecordTrapped once health reaches zero.
+        // NOTE: fire is no longer an instant kill here. AgentNoise handles the
+        // gradual health drain and calls RecordTrapped once health reaches zero.
     }
 
     void MirrorProfile()
@@ -186,7 +188,7 @@ public class AgentDataTracker : MonoBehaviour
     }
 
     // Called by AgentNoise when health reaches zero.
-    // reason is "Fire" or "LowVisibility", whichever caused more cumulative damage.
+    // reason is Fire or LowVisibility, whichever caused more cumulative damage.
     public void RecordTrapped(string reason, float fireDamage, float visibilityDamage)
     {
         if (lifecycleEnded) return;
@@ -208,6 +210,7 @@ public class AgentDataTracker : MonoBehaviour
             " | Fire damage taken: " + fireDamage.ToString("F1") +
             " | Visibility damage taken: " + visibilityDamage.ToString("F1") +
             " | Distance to nearest fire: " + distanceToFire.ToString("F2") +
+            " | Survived: " + Time.time.ToString("F1") + " seconds" +
             " | Path: " + string.Join(" > ", pathHistory);
 
         WriteLifecycleRecord(details);
@@ -216,16 +219,21 @@ public class AgentDataTracker : MonoBehaviour
         Destroy(gameObject);
     }
 
-    // Backward compatible overload, kept so nothing else breaks.
+    // Backward compatible overload.
     public void RecordTrapped(string reason)
     {
         RecordTrapped(reason, fireDamageTotal, visibilityDamageTotal);
     }
 
-    // One time record written at spawn so the AI knows the agent identity up front.
-    private void WriteProfileRecord()
+    // Written once per agent, as soon as the logger has a file open, so the AI
+    // knows who each person is before anything happens to them.
+    private void TryWriteProfileRecord()
     {
+        if (profileWritten) return;
         if (string.IsNullOrEmpty(SimulationLogger.filePath)) return;
+
+        profileWritten = true;
+        MirrorProfile();
 
         SimulationRecord record = new SimulationRecord(
             id: "PROFILE-" + agentId,

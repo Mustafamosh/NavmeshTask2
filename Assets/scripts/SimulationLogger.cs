@@ -1,13 +1,13 @@
 // SimulationLogger.cs
 //
-// Changes in this version:
-//   - Per tick agent telemetry now also logs age band, spawn disability, effective
-//     mobility, current health, hazard band, distance to fire, and the running fire
-//     and visibility damage totals. The AI can now watch each individual person
-//     degrade over time instead of only seeing a position and a speed.
-//   - The summary tick now also reports how many trapped agents died mainly to fire
-//     versus mainly to low visibility, plus how many vulnerable agents are still
-//     inside, which is the single most useful line for coaching.
+// CHANGES IN THIS VERSION
+//   - The log file is now opened in Awake instead of Start. Previously agents ran
+//     their Start before the logger ran its own, so SimulationLogger.filePath was
+//     still empty and every spawn PROFILE record was silently thrown away. Opening
+//     the file in Awake means the path exists before any agent needs it.
+//   - The vulnerability count now matches the simplified disability model, so it
+//     counts elderly agents, agents using a mobility aid, and agents that have
+//     become injured.
 //   - All existing behavior is preserved.
 using UnityEngine;
 using System.Collections.Generic;
@@ -40,15 +40,20 @@ public class SimulationLogger : MonoBehaviour
     private int tickNumber = 0;
     private Dictionary<string, bool> approachBlocked = new Dictionary<string, bool>();
 
-    void Start()
+    // The file must exist before any agent Start runs, otherwise spawn profile
+    // records are dropped. Awake is the earliest safe place to do this.
+    void Awake()
     {
         string folder = Application.persistentDataPath + "/llm-coach";
-        System.IO.Directory.CreateDirectory(folder);
+        Directory.CreateDirectory(folder);
         filePath = folder + "/simulation_data.jsonl";
 
         if (File.Exists(filePath))
             File.Delete(filePath);
+    }
 
+    void Start()
+    {
         if (fireSpread == null)
             fireSpread = FindAnyObjectByType<FireSpread>();
     }
@@ -78,11 +83,9 @@ public class SimulationLogger : MonoBehaviour
         }
 
         // === Agent telemetry, only agents still active in the scene ===
-        // Agents that exited or were trapped are already destroyed, so
-        // FindObjectsByType only returns live agents.
         AgentDataTracker[] agents = FindObjectsByType<AgentDataTracker>();
 
-        int vulnerableInside = 0;   // elderly, disabled, or badly injured and still inside
+        int vulnerableInside = 0;   // elderly, using a mobility aid, or injured
         int criticalHealth = 0;     // below one third health and still inside
 
         foreach (AgentDataTracker agent in agents)
@@ -95,7 +98,7 @@ public class SimulationLogger : MonoBehaviour
             record.timeEnteringZone = agent.timeEnteringZone;
             record.exitTime = agent.exitTime;
 
-            // New per agent context for the AI coach.
+            // Per agent context for the AI coach.
             record.ageBand = agent.ageBand;
             record.disability = agent.spawnDisability;
             record.mobilityStatus = agent.mobilityStatus;
@@ -106,8 +109,6 @@ public class SimulationLogger : MonoBehaviour
             record.fireDamageTotal = agent.fireDamageTotal;
             record.visibilityDamageTotal = agent.visibilityDamageTotal;
 
-            // A short readable line so the LLM does not have to infer everything
-            // from raw numbers.
             record.eventDetails =
                 agent.agentId +
                 " | Age: " + agent.ageBand +
@@ -128,17 +129,14 @@ public class SimulationLogger : MonoBehaviour
 
             bool isVulnerable =
                 agent.ageBand == "Elderly" ||
-                agent.spawnDisability != "None" ||
-                agent.mobilityStatus == "Impaired" ||
-                agent.mobilityStatus == "SeverelyImpaired";
+                agent.spawnDisability == "MobilityAid" ||
+                agent.mobilityStatus.Contains("Injured");
 
             if (isVulnerable) vulnerableInside++;
             if (agent.maxHealth > 0f && agent.health / agent.maxHealth < 0.33f) criticalHealth++;
         }
 
         // === Smoke detector readings ===
-        // Detectors still report from the FireSpread model. There is no smoke
-        // visual in the scene yet, so these values may sit at zero for now.
         SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>();
         foreach (SmokeDetectorNode detector in detectors)
         {
