@@ -1,37 +1,43 @@
 // FireAudio.cs
-// NEW FILE. Put one of these in the scene, on an empty GameObject.
+// NEW FILE. Put on an empty GameObject in the scene, with an AudioSource.
 //
-// Why a single roaming source rather than a sound on each fire prefab
-//   FireSpread spawns and destroys fire chunk prefabs constantly as the fire moves,
-//   up to maxFires at once. An AudioSource on the fire prefab would mean dozens of
-//   overlapping crackle loops, each restarting from zero every time a chunk
-//   respawns. That sounds like static, and it is wasteful.
+// The fire starts on a click, so this source stays completely silent until at
+// least one cell is actually burning. The moment the fire ignites it fades in,
+// grows louder as the fire spreads, and fades back to silence if it burns out.
 //
-//   Instead there is one AudioSource. It glides toward whichever fire is nearest to
-//   the camera, and its volume rises with the total number of burning cells, so a
-//   small fire crackles quietly and a large one roars. To the listener it reads as
-//   one growing fire, which is what it actually is.
+// FIX IN THIS VERSION
+//   The fire that actually burns is created on click and is named
+//   FireSpread_Spawned. The pre placed FireSpread is only a template and never
+//   really burns. The previous version cached the template with FindAnyObjectByType
+//   in Start, so it watched a fire that stayed at zero burning cells and never made
+//   a sound. This version keeps looking for FireSpread_Spawned until it appears,
+//   exactly like SmokeDetectorNode already does.
+//
+// One roaming source, not a sound per fire chunk, because FireSpread spawns and
+// destroys chunks constantly. Dozens of overlapping loops restarting every respawn
+// would sound like static. One source that follows the nearest fire to the camera
+// reads as a single growing fire, which is what it is.
 using UnityEngine;
 
 [RequireComponent(typeof(AudioSource))]
 public class FireAudio : MonoBehaviour
 {
     [Header("Clip")]
-    [Tooltip("A seamless looping fire crackle. Tick Loop on the AudioSource.")]
+    [Tooltip("A seamless looping fire crackle.")]
     public AudioClip fireLoop;
 
     [Header("Volume scaling")]
     [Tooltip("Burning cell count at which the fire reaches full volume.")]
-    public float cellsForFullVolume = 200f;
+    public float cellsForFullVolume = 100f;
 
-    [Tooltip("Volume when only a handful of cells are alight, so a small fire is still audible.")]
-    [Range(0f, 1f)] public float minVolume = 0.15f;
+    [Tooltip("Floor volume once any fire exists, so a small fire is still clearly heard.")]
+    [Range(0f, 1f)] public float minVolume = 0.5f;
+
+    [Tooltip("How fast the sound fades in when the fire starts and out when it dies.")]
+    public float fadeSpeed = 2f;
 
     [Header("Movement")]
-    [Tooltip("How quickly the source glides to the nearest fire. Low values avoid it snapping around.")]
     public float followSmoothing = 2f;
-
-    [Tooltip("How often the nearest fire is recalculated, in seconds.")]
     public float retargetInterval = 0.5f;
 
     [Header("3D sound")]
@@ -43,33 +49,46 @@ public class FireAudio : MonoBehaviour
     private Camera cam;
     private float timer = 0f;
     private Vector3 target;
+    private float currentVol = 0f;
+    private bool started = false;
 
     void Start()
     {
         source = GetComponent<AudioSource>();
-        fireSpread = FindAnyObjectByType<FireSpread>();
         cam = Camera.main;
 
-        if (fireLoop != null)
-            source.clip = fireLoop;
+        if (fireLoop != null) source.clip = fireLoop;
 
         source.loop = true;
         source.playOnAwake = false;
-        source.spatialBlend = 1f;          // fully 3D, so it comes from the fire
+        source.spatialBlend = 1f;
         source.rolloffMode = AudioRolloffMode.Linear;
         source.minDistance = minDistance;
         source.maxDistance = maxDistance;
         source.volume = 0f;
 
         target = transform.position;
-
-        if (source.clip != null)
-            source.Play();
+        // Deliberately not playing yet. Nothing sounds until the fire is clicked.
     }
 
     void Update()
     {
         if (source.clip == null) return;
+
+        // Keep hunting for the spawned fire until it exists.
+        ResolveSpawnedFire();
+
+        int burning = fireSpread != null ? fireSpread.GetBurningCellsCount() : 0;
+
+        // Silent until the fire actually starts.
+        if (burning <= 0 && !started) return;
+
+        // First ignition. Begin the loop once, then let volume handle the rest.
+        if (burning > 0 && !started)
+        {
+            started = true;
+            source.Play();
+        }
 
         timer += Time.deltaTime;
         if (timer >= retargetInterval)
@@ -78,11 +97,32 @@ public class FireAudio : MonoBehaviour
             RetargetNearestFire();
         }
 
-        // Glide rather than teleport, otherwise the sound jumps across the room
-        // every time a closer fire chunk spawns.
         transform.position = Vector3.Lerp(transform.position, target, Time.deltaTime * followSmoothing);
 
-        ApplyVolume();
+        ApplyVolume(burning);
+    }
+
+    // Prefer the clicked fire named FireSpread_Spawned. Only fall back to any
+    // FireSpread if a spawned one is not present, so a manually placed fire still
+    // makes sound in a test scene.
+    void ResolveSpawnedFire()
+    {
+        if (fireSpread != null && fireSpread.name == "FireSpread_Spawned")
+            return;
+
+        FireSpread[] all = FindObjectsByType<FireSpread>(FindObjectsSortMode.None);
+
+        foreach (FireSpread candidate in all)
+        {
+            if (candidate.name == "FireSpread_Spawned")
+            {
+                fireSpread = candidate;
+                return;
+            }
+        }
+
+        if (fireSpread == null && all.Length > 0)
+            fireSpread = all[0];
     }
 
     void RetargetNearestFire()
@@ -93,7 +133,6 @@ public class FireAudio : MonoBehaviour
 
         if (fires.Length == 0) return;
 
-        // Nearest to the camera, not to this object, since the camera is the listener.
         Vector3 ear = cam != null ? cam.transform.position : transform.position;
 
         float nearest = Mathf.Infinity;
@@ -109,27 +148,22 @@ public class FireAudio : MonoBehaviour
         }
     }
 
-    void ApplyVolume()
+    void ApplyVolume(int burning)
     {
         AudioManager am = AudioManager.Instance;
 
         bool audible = am == null || am.FireAudible;
         source.mute = !audible;
 
-        if (!audible) return;
-
-        int burning = fireSpread != null ? fireSpread.GetBurningCellsCount() : 0;
-
-        if (burning <= 0)
+        float goal = 0f;
+        if (audible && burning > 0)
         {
-            source.volume = 0f;
-            return;
+            float scale = Mathf.Lerp(minVolume, 1f, Mathf.Clamp01(burning / cellsForFullVolume));
+            float master = am != null ? am.FireVolume : 1f;
+            goal = scale * master;
         }
 
-        // Volume rises with fire size, from minVolume up to full.
-        float scale = Mathf.Lerp(minVolume, 1f, Mathf.Clamp01(burning / cellsForFullVolume));
-        float master = am != null ? am.FireVolume : 1f;
-
-        source.volume = scale * master;
+        currentVol = Mathf.MoveTowards(currentVol, goal, fadeSpeed * Time.deltaTime);
+        source.volume = currentVol;
     }
 }

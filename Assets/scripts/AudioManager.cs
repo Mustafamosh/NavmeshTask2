@@ -1,17 +1,17 @@
 // AudioManager.cs
 // NEW FILE. Put one of these in the scene.
 //
-// Central switchboard for every sound in the simulation. Fire, alarm, and screams
-// can each be muted independently, and there is a master mute for the whole thing.
+// Central switchboard for fire and alarm sound. Screams have been removed.
 //
-// This matters for the user study. Participants may be wearing headphones, and a
-// wall of overlapping screams is genuinely unpleasant, so there needs to be a way
-// to turn it off without editing prefabs.
-//
-// The alarm is handled differently from the others. FireAlarmSystem and
-// SmokeDetectorNode already own the alarm audio, so instead of editing those files
-// this script reaches out and mutes their AudioSources directly. Nothing in the
-// existing alarm logic changes.
+// Two layers of volume, and they persist in two different ways.
+//   1. The values you set in the Inspector are saved into the scene file, which is
+//      committed to git. So the defaults you choose push with the project and every
+//      teammate and every fresh clone gets them.
+//   2. Any change made while the game is running is saved to PlayerPrefs, which
+//      lives on the player's own machine. This is the layer a published game needs,
+//      so a player's chosen volume survives closing and reopening the game. It does
+//      NOT push to git, which is correct, because one player's volume should not
+//      become everyone's default.
 using UnityEngine;
 
 public class AudioManager : MonoBehaviour
@@ -22,34 +22,37 @@ public class AudioManager : MonoBehaviour
     public bool masterMute = false;
     [Range(0f, 1f)] public float masterVolume = 1f;
 
-    [Header("Fire")]
+    [Header("Fire, loud, the clip is faint on its own")]
     public bool muteFire = false;
-    [Range(0f, 1f)] public float fireVolume = 0.7f;
+    [Range(0f, 2f)] public float fireVolume = 1.4f;
 
-    [Header("Alarm")]
+    [Header("Alarm, low so the scene does not get noisy")]
     public bool muteAlarm = false;
-    [Range(0f, 1f)] public float alarmVolume = 0.5f;
+    [Range(0f, 1f)] public float alarmVolume = 0.25f;
 
-    [Header("Screams")]
-    public bool muteScreams = false;
-    [Range(0f, 1f)] public float screamVolume = 0.6f;
+    [Header("Persistence")]
+    [Tooltip("Load the player's saved volumes on start. Turn off during design so you always see your Inspector defaults.")]
+    public bool loadSavedSettings = true;
 
-    [Tooltip("Hard ceiling on how many agents can be screaming at once, so the mix never turns into noise.")]
-    public int maxConcurrentScreams = 4;
-
-    // How many screams are sounding right now. AgentScream asks before it plays.
-    private int activeScreams = 0;
+    // PlayerPrefs keys.
+    private const string KEY_MASTER_VOL = "audio_master_vol";
+    private const string KEY_MASTER_MUTE = "audio_master_mute";
+    private const string KEY_FIRE_VOL = "audio_fire_vol";
+    private const string KEY_FIRE_MUTE = "audio_fire_mute";
+    private const string KEY_ALARM_VOL = "audio_alarm_vol";
+    private const string KEY_ALARM_MUTE = "audio_alarm_mute";
 
     void Awake()
     {
         Instance = this;
+        if (loadSavedSettings) LoadSettings();
     }
 
     void Update()
     {
-        // The alarm lives on the smoke detectors, which are not ours to edit, so we
-        // mute them from out here instead. This runs every frame because detectors
-        // start sounding partway through the run rather than at startup.
+        // The alarm audio lives on the smoke detectors, which are not ours to edit,
+        // so we mute and set their volume from out here. It runs every frame because
+        // detectors only begin sounding partway through the run, never at startup.
         ApplyAlarmSettings();
     }
 
@@ -67,54 +70,42 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    // ---------------- Queried by the other audio scripts ----------------
+    // ---------------- Queried by FireAudio ----------------
 
     public bool FireAudible => !masterMute && !muteFire;
     public float FireVolume => fireVolume * masterVolume;
 
-    public bool ScreamsAudible => !masterMute && !muteScreams;
-    public float ScreamVolume => screamVolume * masterVolume;
+    // ---------------- Persistence ----------------
 
-    /// <summary>
-    /// An agent asks permission before screaming. This keeps the number of
-    /// simultaneous screams under the cap so the mix stays readable.
-    /// </summary>
-    public bool RequestScream()
+    public void SaveSettings()
     {
-        if (!ScreamsAudible) return false;
-        if (activeScreams >= maxConcurrentScreams) return false;
-
-        activeScreams++;
-        return true;
+        PlayerPrefs.SetFloat(KEY_MASTER_VOL, masterVolume);
+        PlayerPrefs.SetInt(KEY_MASTER_MUTE, masterMute ? 1 : 0);
+        PlayerPrefs.SetFloat(KEY_FIRE_VOL, fireVolume);
+        PlayerPrefs.SetInt(KEY_FIRE_MUTE, muteFire ? 1 : 0);
+        PlayerPrefs.SetFloat(KEY_ALARM_VOL, alarmVolume);
+        PlayerPrefs.SetInt(KEY_ALARM_MUTE, muteAlarm ? 1 : 0);
+        PlayerPrefs.Save();
     }
 
-    /// <summary>
-    /// Called by the agent once its scream clip has finished.
-    /// </summary>
-    public void ReleaseScream()
+    public void LoadSettings()
     {
-        activeScreams = Mathf.Max(0, activeScreams - 1);
+        masterVolume = PlayerPrefs.GetFloat(KEY_MASTER_VOL, masterVolume);
+        masterMute = PlayerPrefs.GetInt(KEY_MASTER_MUTE, masterMute ? 1 : 0) == 1;
+        fireVolume = PlayerPrefs.GetFloat(KEY_FIRE_VOL, fireVolume);
+        muteFire = PlayerPrefs.GetInt(KEY_FIRE_MUTE, muteFire ? 1 : 0) == 1;
+        alarmVolume = PlayerPrefs.GetFloat(KEY_ALARM_VOL, alarmVolume);
+        muteAlarm = PlayerPrefs.GetInt(KEY_ALARM_MUTE, muteAlarm ? 1 : 0) == 1;
     }
 
-    // ---------------- Hooks for a UI mute button ----------------
+    // ---------------- Hooks for UI sliders and buttons ----------------
+    // Wire a slider OnValueChanged to these, then call SaveSettings on release.
 
-    public void ToggleMasterMute()
-    {
-        masterMute = !masterMute;
-    }
+    public void SetMasterVolume(float v) { masterVolume = v; SaveSettings(); }
+    public void SetFireVolume(float v) { fireVolume = v; SaveSettings(); }
+    public void SetAlarmVolume(float v) { alarmVolume = v; SaveSettings(); }
 
-    public void ToggleScreams()
-    {
-        muteScreams = !muteScreams;
-    }
-
-    public void ToggleFire()
-    {
-        muteFire = !muteFire;
-    }
-
-    public void ToggleAlarm()
-    {
-        muteAlarm = !muteAlarm;
-    }
+    public void ToggleMasterMute() { masterMute = !masterMute; SaveSettings(); }
+    public void ToggleFire() { muteFire = !muteFire; SaveSettings(); }
+    public void ToggleAlarm() { muteAlarm = !muteAlarm; SaveSettings(); }
 }
