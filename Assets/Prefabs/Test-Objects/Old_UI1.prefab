@@ -1008,7 +1008,7 @@ GameObject:
   - component: {fileID: 5558246906504819293}
   - component: {fileID: 5515513972836460966}
   m_Layer: 0
-  m_Name: Tania_UI
+  m_Name: Old_UI1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
