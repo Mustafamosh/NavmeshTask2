@@ -49,6 +49,7 @@ public class FireSpread : MonoBehaviour
 
     [Header("Fire Behavior")]
     public bool allowFireExtinguishing = true;
+    public bool enableFireStart = true;
     public int maxFires = 100;
 
     [Header("Logging")]
@@ -103,7 +104,11 @@ public class FireSpread : MonoBehaviour
         smokeGrid = new float[cols, rows];
 
         BakeEnvironmentGrid();
-        IgniteAtTransform();
+        
+        if (enableFireStart)
+        {
+            IgniteAtTransform();
+        }
 
         chunkCols = Mathf.CeilToInt((float)cols / visualChunkSize);
         chunkRows = Mathf.CeilToInt((float)rows / visualChunkSize);
@@ -138,9 +143,21 @@ public class FireSpread : MonoBehaviour
         gridOriginZ = transform.position.z - (rows * cellSize) / 2f;
     }
 
+    int GetObstacleMask()
+    {
+        int mask = obstacleLayer.value;
+        int ignoreLayer = LayerMask.NameToLayer("Ignore");
+
+        if (ignoreLayer >= 0)
+            mask |= 1 << ignoreLayer;
+
+        return mask;
+    }
+
     void BakeEnvironmentGrid()
     {
         Vector3 halfExtents = new Vector3(cellSize / 2.1f, obstacleCheckHeight / 2f, cellSize / 2.1f);
+        int obstacleMask = GetObstacleMask();
 
         for (int x = 0; x < cols; x++)
         {
@@ -149,7 +166,7 @@ public class FireSpread : MonoBehaviour
                 Vector3 cellCenter = CellCenter(x, z);
                 Vector3 checkCenter = new Vector3(cellCenter.x, floorSurfaceY + (obstacleCheckHeight / 2f), cellCenter.z);
 
-                if (Physics.CheckBox(checkCenter, halfExtents, Quaternion.identity, obstacleLayer))
+                if (Physics.CheckBox(checkCenter, halfExtents, Quaternion.identity, obstacleMask))
                     fireGrid[x, z] = FireState.WALL;
                 else
                     fireGrid[x, z] = FireState.UNBURNT;

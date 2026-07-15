@@ -1,102 +1,79 @@
 sensorId,sensorTypeString,location,timestamp,tickNumber,value,agentId,speed,hasExited,timeEnteringZone,exitTime,eventDetails,totalAgentsExited,zoneCount,zone_Hallway_2,zone_Exit_1,zone_Hallway_3,zone_Exit_2,zone_Exit_3,zone_Hallway_1,zone_Bathrooms,zone_Classroom,zone_Offices,zone_Main_Hall
-ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,10,1,Agent-5,0,False,0,0,Agent entered zone,0,1,0,0,0,0,0,1,0,7,2,1
-ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,11,2,Agent-14,0,False,0,0,Agent entered zone,0,2,0,0,0,0,0,1,0,7,2,2
-ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,12,3,Agent-15,0,False,0,0,Agent entered zone,0,3,0,0,0,0,0,1,0,7,2,3
-ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,0,13,1,Agent-2,0,False,0,0,Agent entered zone,0,1,1,0,0,0,0,1,0,7,2,3
-ZONE-Offices-Enter,ZoneOccupancy,Offices,0,14,3,Agent-0,0,False,0,0,Agent entered zone,0,3,1,0,0,0,0,1,0,7,3,3
-ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,0,15,1,Agent-3,0,False,0,0,Agent entered zone,0,1,1,0,1,0,0,1,0,7,3,3
-ZONE-Offices-Enter,ZoneOccupancy,Offices,0,16,4,Agent-1,0,False,0,0,Agent entered zone,0,4,1,0,1,0,0,1,0,7,4,3
-ZONE-Offices-Enter,ZoneOccupancy,Offices,0,17,5,Agent-13,0,False,0,0,Agent entered zone,0,5,1,0,1,0,0,1,0,7,5,3
-ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0.6599998,18,4,Agent-4,0,False,0.6599998,0,Agent entered zone,0,4,1,0,1,0,0,1,0,7,5,4
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,1.459999,19,6,Agent-8,0,True,0,1.459999,Agent exited zone,0,6,1,0,1,0,0,1,0,6,5,4
-ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,1.52,20,2,Agent-0,0,False,1.52,0,Agent entered zone,0,2,2,0,1,0,0,1,0,6,5,4
-ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,1.579999,21,3,Agent-15,0,True,0,1.579999,Agent exited zone,0,3,2,0,1,0,0,1,0,6,5,3
-ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,1.639999,22,1,Agent-15,0,False,1.639999,0,Agent entered zone,0,1,2,1,1,0,0,1,0,6,5,3
-ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,1.659999,23,4,Agent-2,0,False,1.659999,0,Agent entered zone,0,4,2,1,1,0,0,1,0,6,5,4
-ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,1.719999,24,3,Agent-3,0,False,1.719999,0,Agent entered zone,0,3,3,1,1,0,0,1,0,6,5,4
-ZONE-Offices-Exit,ZoneOccupancy,Offices,1.899999,25,4,Agent-0,0,True,0,1.899999,Agent exited zone,0,4,3,1,1,0,0,1,0,6,4,4
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,1.939999,26,2,Agent-16,0,False,1.939999,0,Agent entered zone,0,2,3,1,1,0,0,2,0,6,4,4
-ZONE-Classroom-Enter,ZoneOccupancy,Classroom,1.939999,27,7,Agent-7,0,False,1.939999,0,Agent entered zone,0,7,3,1,1,0,0,2,0,7,4,4
-ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,2.019999,28,2,Agent-13,0,False,2.019999,0,Agent entered zone,0,2,3,1,2,0,0,2,0,7,4,4
-ZONE-Offices-Exit,ZoneOccupancy,Offices,2.039999,29,3,Agent-7,0,True,0,2.039999,Agent exited zone,0,3,3,1,2,0,0,2,0,7,3,4
-ZONE-Hallway 2-Exit,ZoneOccupancy,Hallway 2,2.279999,30,2,Agent-2,0,True,0,2.279999,Agent exited zone,0,2,2,1,2,0,0,2,0,7,3,4
-ZONE-Exit 1-ForcedExit,ZoneOccupancy,Exit 1,2.518615,31,0,Agent-15,0,True,1.639999,2.518615,Agent exited zone (destroyed on exit/trapped),1,0,2,0,2,0,0,2,0,7,3,4
-ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,2.579999,32,1,Agent-3,0,True,0,2.579999,Agent exited zone,1,1,2,0,1,0,0,2,0,7,3,4
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,2.719999,33,6,Agent-18,0,True,0,2.719999,Agent exited zone,1,6,2,0,1,0,0,2,0,6,3,4
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,3.059999,34,1,Agent-16,0,True,0,3.059999,Agent exited zone,1,1,2,0,1,0,0,1,0,6,3,4
-ZONE-Offices-Exit,ZoneOccupancy,Offices,3.079999,35,2,Agent-13,0,True,0,3.079999,Agent exited zone,1,2,2,0,1,0,0,1,0,6,2,4
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,3.199999,36,1,Agent-16,0,False,3.199999,0,Agent entered zone,1,1,2,0,1,0,1,1,0,6,2,4
-ZONE-Classroom-Enter,ZoneOccupancy,Classroom,3.259999,37,7,Agent-17,0,False,3.259999,0,Agent entered zone,1,7,2,0,1,0,1,1,0,7,2,4
-ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,3.279999,38,3,Agent-5,0,True,0,3.279999,Agent exited zone,1,3,2,0,1,0,1,1,0,7,2,3
-ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,3.379999,39,1,Agent-5,0,False,3.379999,0,Agent entered zone,1,1,2,1,1,0,1,1,0,7,2,3
-ZONE-Offices-Exit,ZoneOccupancy,Offices,3.499999,40,1,Agent-17,0,True,0,3.499999,Agent exited zone,1,1,2,1,1,0,1,1,0,7,1,3
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,3.619999,41,6,Agent-19,0,True,0,3.619999,Agent exited zone,1,6,2,1,1,0,1,1,0,6,1,3
-ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,3.879999,42,2,Agent-1,0,False,3.879999,0,Agent entered zone,1,2,2,1,2,0,1,1,0,6,1,3
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,3.939999,43,0,Agent-6,0,True,0,3.939999,Agent exited zone,1,0,2,1,2,0,1,0,0,6,1,3
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,4.059999,44,2,Agent-6,0,False,4.059999,0,Agent entered zone,1,2,2,1,2,0,2,0,0,6,1,3
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,4.307686,45,1,Agent-16,0,True,3.199999,4.307686,Agent exited zone (destroyed on exit/trapped),2,1,2,1,2,0,1,0,0,6,1,3
-ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,4.419999,46,4,Agent-3,0,False,4.419999,0,Agent entered zone,2,4,2,1,2,0,1,0,0,6,1,4
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,4.559999,47,1,Agent-8,0,False,4.559999,0,Agent entered zone,2,1,2,1,2,0,1,1,0,6,1,4
-ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,4.639998,48,3,Agent-14,0,True,0,4.639998,Agent exited zone,2,3,2,1,2,0,1,1,0,6,1,3
-ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,4.719998,49,2,Agent-14,0,False,4.719998,0,Agent entered zone,2,2,2,2,2,0,1,1,0,6,1,3
-ZONE-Hallway 2-Exit,ZoneOccupancy,Hallway 2,4.739998,50,1,Agent-3,0,True,0,4.739998,Agent exited zone,2,1,1,2,2,0,1,1,0,6,1,3
-ZONE-Exit 1-ForcedExit,ZoneOccupancy,Exit 1,4.910225,51,1,Agent-5,0,True,3.379999,4.910225,Agent exited zone (destroyed on exit/trapped),3,1,1,1,2,0,1,1,0,6,1,3
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,5.019998,52,5,Agent-7,0,True,0,5.019998,Agent exited zone,3,5,1,1,2,0,1,1,0,5,1,3
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,5.175688,53,0,Agent-6,0,True,4.059999,5.175688,Agent exited zone (destroyed on exit/trapped),4,0,1,1,2,0,0,1,0,5,1,3
-ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,5.759998,54,4,Agent-0,0,False,5.759998,0,Agent entered zone,4,4,1,1,2,0,0,1,0,5,1,4
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,5.879998,55,2,Agent-18,0,False,5.879998,0,Agent entered zone,4,2,1,1,2,0,0,2,0,5,1,4
-ZONE-Hallway 3-ForcedExit,ZoneOccupancy,Hallway 3,5.948432,56,1,Agent-1,0,True,3.879999,5.948432,Agent exited zone (destroyed on exit/trapped),4,1,1,1,1,0,0,2,0,5,1,4
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,5.959998,57,4,Agent-9,0,True,0,5.959998,Agent exited zone,4,4,1,1,1,0,0,2,0,4,1,4
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,6.059998,58,1,Agent-8,0,True,0,6.059998,Agent exited zone,4,1,1,1,1,0,0,1,0,4,1,4
-ZONE-Exit 1-ForcedExit,ZoneOccupancy,Exit 1,6.063389,59,0,Agent-14,0,True,4.719998,6.063389,Agent exited zone (destroyed on exit/trapped),5,0,1,0,1,0,0,1,0,4,1,4
-ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,6.199998,60,3,Agent-2,0,True,0,6.199998,Agent exited zone,5,3,1,0,1,0,0,1,0,4,1,3
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,6.239998,61,1,Agent-8,0,False,6.239998,0,Agent entered zone,5,1,1,0,1,0,1,1,0,4,1,3
-ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,6.299998,62,1,Agent-2,0,False,6.299998,0,Agent entered zone,5,1,1,1,1,0,1,1,0,4,1,3
-ZONE-Hallway 2-Exit,ZoneOccupancy,Hallway 2,6.339998,63,0,Agent-0,0,True,0,6.339998,Agent exited zone,5,0,0,1,1,0,1,1,0,4,1,3
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,6.419998,64,2,Agent-19,0,False,6.419998,0,Agent entered zone,5,2,0,1,1,0,1,2,0,4,1,3
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,6.559998,65,3,Agent-17,0,True,0,6.559998,Agent exited zone,5,3,0,1,1,0,1,2,0,3,1,3
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,7.399997,66,1,Agent-18,0,True,0,7.399997,Agent exited zone,5,1,0,1,1,0,1,1,0,3,1,3
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,7.579998,67,2,Agent-18,0,False,7.579998,0,Agent entered zone,5,2,0,1,1,0,2,1,0,3,1,3
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,7.699997,68,2,Agent-12,0,True,0,7.699997,Agent exited zone,5,2,0,1,1,0,2,1,0,2,1,3
-ZONE-Hallway 3-ForcedExit,ZoneOccupancy,Hallway 3,7.709216,69,0,Agent-13,0,True,2.019999,7.709216,Agent exited zone (destroyed on exit/trapped),5,0,0,1,0,0,2,1,0,2,1,3
-ZONE-Exit 1-ForcedExit,ZoneOccupancy,Exit 1,7.737396,70,0,Agent-2,0,True,6.299998,7.737396,Agent exited zone (destroyed on exit/trapped),6,0,0,0,0,0,2,1,0,2,1,3
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,7.748725,71,1,Agent-8,0,True,6.239998,7.748725,Agent exited zone (destroyed on exit/trapped),7,1,0,0,0,0,1,1,0,2,1,3
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,7.839997,72,2,Agent-7,0,False,7.839997,0,Agent entered zone,7,2,0,0,0,0,1,2,0,2,1,3
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,7.899997,73,1,Agent-19,0,True,0,7.899997,Agent exited zone,7,1,0,0,0,0,1,1,0,2,1,3
-ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,8.079997,74,2,Agent-4,0,True,0,8.079997,Agent exited zone,7,2,0,0,0,0,1,1,0,2,1,2
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,8.079997,75,2,Agent-19,0,False,8.079997,0,Agent entered zone,7,2,0,0,0,0,2,1,0,2,1,2
-ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,8.259997,76,1,Agent-4,0,False,8.259997,0,Agent entered zone,7,1,0,1,0,0,2,1,0,2,1,2
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,8.319997,77,1,Agent-10,0,True,0,8.319997,Agent exited zone,7,1,0,1,0,0,2,1,0,1,1,2
-ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,8.819997,78,1,Agent-3,0,True,0,8.819997,Agent exited zone,7,1,0,1,0,0,2,1,0,1,1,1
-ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,8.959997,79,2,Agent-3,0,False,8.959997,0,Agent entered zone,7,2,0,2,0,0,2,1,0,1,1,1
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,9.036339,80,1,Agent-18,0,True,7.579998,9.036339,Agent exited zone (destroyed on exit/trapped),8,1,0,2,0,0,1,1,0,1,1,1
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,9.179996,81,0,Agent-7,0,True,0,9.179996,Agent exited zone,8,0,0,2,0,0,1,0,0,1,1,1
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,9.339996,82,2,Agent-7,0,False,9.339996,0,Agent entered zone,8,2,0,2,0,0,2,0,0,1,1,1
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,9.441427,83,1,Agent-19,0,True,8.079997,9.441427,Agent exited zone (destroyed on exit/trapped),9,1,0,2,0,0,1,0,0,1,1,1
-ZONE-Classroom-Exit,ZoneOccupancy,Classroom,9.599997,84,0,Agent-11,0,True,0,9.599997,Agent exited zone,9,0,0,2,0,0,1,0,0,0,1,1
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,9.679996,85,1,Agent-9,0,False,9.679996,0,Agent entered zone,9,1,0,2,0,0,1,1,0,0,1,1
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,10.3,86,2,Agent-17,0,False,10.3,0,Agent entered zone,9,2,0,2,0,0,1,2,0,0,1,1
-ZONE-Exit 1-ForcedExit,ZoneOccupancy,Exit 1,10.60895,87,1,Agent-4,0,True,8.259997,10.60895,Agent exited zone (destroyed on exit/trapped),10,1,0,1,0,0,1,2,0,0,1,1
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,10.69666,88,0,Agent-7,0,True,9.339996,10.69666,Agent exited zone (destroyed on exit/trapped),11,0,0,1,0,0,0,2,0,0,1,1
-ZONE-Exit 1-ForcedExit,ZoneOccupancy,Exit 1,10.81369,89,0,Agent-3,0,True,8.959997,10.81369,Agent exited zone (destroyed on exit/trapped),12,0,0,0,0,0,0,2,0,0,1,1
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,11.32,90,3,Agent-12,0,False,11.32,0,Agent entered zone,12,3,0,0,0,0,0,3,0,0,1,1
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,11.54,91,2,Agent-9,0,True,0,11.54,Agent exited zone,12,2,0,0,0,0,0,2,0,0,1,1
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,11.78,92,1,Agent-9,0,False,11.78,0,Agent entered zone,12,1,0,0,0,0,1,2,0,0,1,1
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,11.96,93,3,Agent-10,0,False,11.96,0,Agent entered zone,12,3,0,0,0,0,1,3,0,0,1,1
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,12.16,94,2,Agent-17,0,True,0,12.16,Agent exited zone,12,2,0,0,0,0,1,2,0,0,1,1
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,12.38,95,2,Agent-17,0,False,12.38,0,Agent entered zone,12,2,0,0,0,0,2,2,0,0,1,1
-ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,12.62,96,0,Agent-0,0,True,0,12.62,Agent exited zone,12,0,0,0,0,0,2,2,0,0,1,0
-ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,12.8,97,1,Agent-0,0,False,12.8,0,Agent entered zone,12,1,0,1,0,0,2,2,0,0,1,0
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,13.14,98,1,Agent-12,0,True,0,13.14,Agent exited zone,12,1,0,1,0,0,2,1,0,0,1,0
-ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,13.18,99,2,Agent-11,0,False,13.18,0,Agent entered zone,12,2,0,1,0,0,2,2,0,0,1,0
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,13.38,100,3,Agent-12,0,False,13.38,0,Agent entered zone,12,3,0,1,0,0,3,2,0,0,1,0
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,13.57787,101,2,Agent-9,0,True,11.78,13.57787,Agent exited zone (destroyed on exit/trapped),13,2,0,1,0,0,2,2,0,0,1,0
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,13.77999,102,1,Agent-10,0,True,0,13.77999,Agent exited zone,13,1,0,1,0,0,2,1,0,0,1,0
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,13.93065,103,1,Agent-17,0,True,12.38,13.93065,Agent exited zone (destroyed on exit/trapped),14,1,0,1,0,0,1,1,0,0,1,0
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,14,104,2,Agent-10,0,False,14,0,Agent entered zone,14,2,0,1,0,0,2,1,0,0,1,0
-ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,14.83999,105,0,Agent-11,0,True,0,14.83999,Agent exited zone,14,0,0,1,0,0,2,0,0,0,1,0
-ZONE-Exit 3-Enter,ZoneOccupancy,Exit 3,15.05999,106,3,Agent-11,0,False,15.05999,0,Agent entered zone,14,3,0,1,0,0,3,0,0,0,1,0
-ZONE-Exit 1-ForcedExit,ZoneOccupancy,Exit 1,15.0923,107,0,Agent-0,0,True,12.8,15.0923,Agent exited zone (destroyed on exit/trapped),15,0,0,0,0,0,3,0,0,0,1,0
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,15.22509,108,2,Agent-12,0,True,13.38,15.22509,Agent exited zone (destroyed on exit/trapped),16,2,0,0,0,0,2,0,0,0,1,0
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,15.73208,109,1,Agent-10,0,True,14,15.73208,Agent exited zone (destroyed on exit/trapped),17,1,0,0,0,0,1,0,0,0,1,0
-ZONE-Exit 3-ForcedExit,ZoneOccupancy,Exit 3,16.77675,110,0,Agent-11,0,True,15.05999,16.77675,Agent exited zone (destroyed on exit/trapped),18,0,0,0,0,0,0,0,0,0,1,0
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,11,1,Agent-5,0,False,0,0,Agent entered zone,0,1,0,0,0,0,0,1,0,8,2,1
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,12,2,Agent-14,0,False,0,0,Agent entered zone,0,2,0,0,0,0,0,1,0,8,2,2
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,13,3,Agent-15,0,False,0,0,Agent entered zone,0,3,0,0,0,0,0,1,0,8,2,3
+ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,0,14,1,Agent-2,0,False,0,0,Agent entered zone,0,1,1,0,0,0,0,1,0,8,2,3
+ZONE-Offices-Enter,ZoneOccupancy,Offices,0,15,3,Agent-0,0,False,0,0,Agent entered zone,0,3,1,0,0,0,0,1,0,8,3,3
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,0,16,1,Agent-3,0,False,0,0,Agent entered zone,0,1,1,0,1,0,0,1,0,8,3,3
+ZONE-Offices-Enter,ZoneOccupancy,Offices,0,17,4,Agent-1,0,False,0,0,Agent entered zone,0,4,1,0,1,0,0,1,0,8,4,3
+ZONE-Offices-Enter,ZoneOccupancy,Offices,0,18,5,Agent-13,0,False,0,0,Agent entered zone,0,5,1,0,1,0,0,1,0,8,5,3
+ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,0.12,19,0,Agent-6,0,True,0,0.12,Agent exited zone,0,0,1,0,1,0,0,0,0,8,5,3
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,1.939999,20,9,Agent-7,0,False,1.939999,0,Agent entered zone,0,9,1,0,1,0,0,0,0,9,5,3
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,2.079999,21,2,Agent-13,0,False,2.079999,0,Agent entered zone,0,2,1,0,2,0,0,0,0,9,5,3
+ZONE-Offices-Exit,ZoneOccupancy,Offices,2.099999,22,4,Agent-7,0,True,0,2.099999,Agent exited zone,0,4,1,0,2,0,0,0,0,9,4,3
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,2.919999,23,3,Agent-1,0,False,2.919999,0,Agent entered zone,0,3,1,0,3,0,0,0,0,9,4,3
+ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,3.399999,24,2,Agent-0,0,False,3.399999,0,Agent entered zone,0,2,2,0,3,0,0,0,0,9,4,3
+ZONE-Offices-Exit,ZoneOccupancy,Offices,3.959999,25,3,Agent-0,0,True,0,3.959999,Agent exited zone,0,3,2,0,3,0,0,0,0,9,3,3
+ZONE-Bathrooms-Enter,ZoneOccupancy,Bathrooms,4.459999,26,1,Agent-6,0,False,4.459999,0,Agent entered zone,0,1,2,0,3,0,0,0,1,9,3,3
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,4.719998,27,4,Agent-2,0,False,4.719998,0,Agent entered zone,0,4,2,0,4,0,0,0,1,9,3,3
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,4.819998,28,10,Agent-17,0,False,4.819998,0,Agent entered zone,0,10,2,0,4,0,0,0,1,10,3,3
+ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,4.839998,29,3,Agent-1,0,False,4.839998,0,Agent entered zone,0,3,3,0,4,0,0,0,1,10,3,3
+ZONE-Offices-Enter,ZoneOccupancy,Offices,4.899998,30,4,Agent-3,0,False,4.899998,0,Agent entered zone,0,4,3,0,4,0,0,0,1,10,4,3
+ZONE-Offices-Exit,ZoneOccupancy,Offices,4.979998,31,3,Agent-17,0,True,0,4.979998,Agent exited zone,0,3,3,0,4,0,0,0,1,10,3,3
+ZONE-Offices-Exit,ZoneOccupancy,Offices,5.299998,32,2,Agent-13,0,True,0,5.299998,Agent exited zone,0,2,3,0,4,0,0,0,1,10,2,3
+ZONE-Offices-Exit,ZoneOccupancy,Offices,5.499998,33,1,Agent-1,0,True,0,5.499998,Agent exited zone,0,1,3,0,4,0,0,0,1,10,1,3
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,5.739998,34,3,Agent-1,0,True,0,5.739998,Agent exited zone,0,3,3,0,3,0,0,0,1,10,1,3
+ZONE-Hallway 2-Exit,ZoneOccupancy,Hallway 2,6.259998,35,2,Agent-2,0,True,0,6.259998,Agent exited zone,0,2,2,0,3,0,0,0,1,10,1,3
+ZONE-Offices-Enter,ZoneOccupancy,Offices,6.319998,36,2,Agent-2,0,False,6.319998,0,Agent entered zone,0,2,2,0,3,0,0,0,1,10,2,3
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,6.359998,37,2,Agent-3,0,True,0,6.359998,Agent exited zone,0,2,2,0,2,0,0,0,1,10,2,3
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,7.239997,38,3,Agent-0,0,False,7.239997,0,Agent entered zone,0,3,2,0,3,0,0,0,1,10,2,3
+ZONE-Bathrooms-Exit,ZoneOccupancy,Bathrooms,8.279997,39,0,Agent-6,0,True,0,8.279997,Agent exited zone,0,0,2,0,3,0,0,0,0,10,2,3
+ZONE-Hallway 2-Exit,ZoneOccupancy,Hallway 2,8.959997,40,1,Agent-0,0,True,0,8.959997,Agent exited zone,0,1,1,0,3,0,0,0,0,10,2,3
+ZONE-Offices-Exit,ZoneOccupancy,Offices,9.039997,41,1,Agent-2,0,True,0,9.039997,Agent exited zone,0,1,1,0,3,0,0,0,0,10,1,3
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,9.179996,42,4,Agent-1,0,False,9.179996,0,Agent entered zone,0,4,1,0,4,0,0,0,0,10,1,3
+ZONE-Offices-Enter,ZoneOccupancy,Offices,9.899997,43,2,Agent-13,0,False,9.899997,0,Agent entered zone,0,2,1,0,4,0,0,0,0,10,2,3
+ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,9.959996,44,2,Agent-15,0,True,0,9.959996,Agent exited zone,0,2,1,0,4,0,0,0,0,10,2,2
+ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,10.02,45,1,Agent-15,0,False,10.02,0,Agent entered zone,0,1,1,1,4,0,0,0,0,10,2,2
+ZONE-Offices-Enter,ZoneOccupancy,Offices,10.24,46,3,Agent-1,0,False,10.24,0,Agent entered zone,0,3,1,1,4,0,0,0,0,10,3,2
+ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,10.46,47,1,Agent-14,0,True,0,10.46,Agent exited zone,0,1,1,1,4,0,0,0,0,10,3,1
+ZONE-Offices-Exit,ZoneOccupancy,Offices,10.46,48,2,Agent-1,0,True,0,10.46,Agent exited zone,0,2,1,1,4,0,0,0,0,10,2,1
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,10.56,49,3,Agent-1,0,True,0,10.56,Agent exited zone,0,3,1,1,3,0,0,0,0,10,2,1
+ZONE-Exit 1-Enter,ZoneOccupancy,Exit 1,10.56,50,2,Agent-14,0,False,10.56,0,Agent entered zone,0,2,1,2,3,0,0,0,0,10,2,1
+ZONE-Offices-Enter,ZoneOccupancy,Offices,10.6,51,3,Agent-1,0,False,10.6,0,Agent entered zone,0,3,1,2,3,0,0,0,0,10,3,1
+ZONE-Offices-Enter,ZoneOccupancy,Offices,10.82,52,4,Agent-0,0,False,10.82,0,Agent entered zone,0,4,1,2,3,0,0,0,0,10,4,1
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,11.6,53,4,Agent-3,0,False,11.6,0,Agent entered zone,0,4,1,2,4,0,0,0,0,10,4,1
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,11.72,54,3,Agent-13,0,True,0,11.72,Agent exited zone,0,3,1,2,3,0,0,0,0,10,4,1
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,11.98,55,2,Agent-0,0,True,0,11.98,Agent exited zone,0,2,1,2,2,0,0,0,0,10,4,1
+ZONE-Offices-Exit,ZoneOccupancy,Offices,12.18,56,3,Agent-1,0,True,0,12.18,Agent exited zone,0,3,1,2,2,0,0,0,0,10,3,1
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,12.2,57,3,Agent-13,0,False,12.2,0,Agent entered zone,0,3,1,2,3,0,0,0,0,10,3,1
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,12.44,58,4,Agent-0,0,False,12.44,0,Agent entered zone,0,4,1,2,4,0,0,0,0,10,3,1
+ZONE-Offices-Exit,ZoneOccupancy,Offices,12.84,59,2,Agent-3,0,True,0,12.84,Agent exited zone,0,2,1,2,4,0,0,0,0,10,2,1
+ZONE-Offices-Enter,ZoneOccupancy,Offices,12.88,60,3,Agent-2,0,False,12.88,0,Agent entered zone,0,3,1,2,4,0,0,0,0,10,3,1
+ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,12.9,61,0,Agent-5,0,True,0,12.9,Agent exited zone,0,0,1,2,4,0,0,0,0,10,3,0
+ZONE-Bathrooms-Enter,ZoneOccupancy,Bathrooms,13,62,1,Agent-4,0,False,13,0,Agent entered zone,0,1,1,2,4,0,0,0,1,10,3,0
+ZONE-Bathrooms-ForcedExit,ZoneOccupancy,Bathrooms,13.06305,63,0,Agent-4,0,True,13,13.06305,Agent exited zone (destroyed on exit/trapped),0,0,1,2,4,0,0,0,0,10,3,0
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,13.97999,64,1,Agent-5,0,False,13.97999,0,Agent entered zone,0,1,1,2,4,0,0,0,0,10,3,1
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,14.09999,65,3,Agent-2,0,True,0,14.09999,Agent exited zone,0,3,1,2,3,0,0,0,0,10,3,1
+ZONE-Offices-Exit,ZoneOccupancy,Offices,14.29999,66,2,Agent-13,0,True,0,14.29999,Agent exited zone,0,2,1,2,3,0,0,0,0,10,2,1
+ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,14.29999,67,0,Agent-5,0,True,0,14.29999,Agent exited zone,0,0,1,2,3,0,0,0,0,10,2,0
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,15.85999,68,2,Agent-0,0,True,0,15.85999,Agent exited zone,0,2,1,2,2,0,0,0,0,10,2,0
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,16.43999,69,1,Agent-5,0,False,16.43999,0,Agent entered zone,0,1,1,2,2,0,0,0,0,10,2,1
+ZONE-Main Hall-Exit,ZoneOccupancy,Main Hall,16.65999,70,0,Agent-5,0,True,0,16.65999,Agent exited zone,0,0,1,2,2,0,0,0,0,10,2,0
+ZONE-Exit 1-Exit,ZoneOccupancy,Exit 1,16.65999,71,1,Agent-15,0,True,0,16.65999,Agent exited zone,0,1,1,1,2,0,0,0,0,10,2,0
+ZONE-Exit 1-Exit,ZoneOccupancy,Exit 1,16.65999,72,0,Agent-14,0,True,0,16.65999,Agent exited zone,0,0,1,0,2,0,0,0,0,10,2,0
+ZONE-Offices-Enter,ZoneOccupancy,Offices,16.65999,73,3,Agent-14,0,False,16.65999,0,Agent entered zone,0,3,1,0,2,0,0,0,0,10,3,0
+ZONE-Offices-Enter,ZoneOccupancy,Offices,16.65999,74,4,Agent-15,0,False,16.65999,0,Agent entered zone,0,4,1,0,2,0,0,0,0,10,4,0
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,16.65999,75,3,Agent-15,0,False,16.65999,0,Agent entered zone,0,3,1,0,3,0,0,0,0,10,4,0
+ZONE-Offices-Enter,ZoneOccupancy,Offices,16.65999,76,5,Agent-5,0,False,16.65999,0,Agent entered zone,0,5,1,0,3,0,0,0,0,10,5,0
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,16.95999,77,1,Agent-5,0,False,16.95999,0,Agent entered zone,0,1,1,0,3,0,0,0,0,10,5,1
+ZONE-Offices-Exit,ZoneOccupancy,Offices,17.31999,78,4,Agent-15,0,True,0,17.31999,Agent exited zone,0,4,1,0,3,0,0,0,0,10,4,1
+ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,17.31999,79,1,Agent-6,0,False,17.31999,0,Agent entered zone,0,1,1,0,3,0,0,1,0,10,4,1
+ZONE-Offices-Enter,ZoneOccupancy,Offices,17.57999,80,5,Agent-13,0,False,17.57999,0,Agent entered zone,0,5,1,0,3,0,0,1,0,10,5,1
+ZONE-Hallway 2-Exit,ZoneOccupancy,Hallway 2,17.71999,81,0,Agent-1,0,True,0,17.71999,Agent exited zone,0,0,0,0,3,0,0,1,0,10,5,1
+ZONE-Offices-Enter,ZoneOccupancy,Offices,17.71999,82,6,Agent-1,0,False,17.71999,0,Agent entered zone,0,6,0,0,3,0,0,1,0,10,6,1
+ZONE-Hallway 3-ForcedExit,ZoneOccupancy,Hallway 3,19.09501,83,2,Agent-13,0,True,12.2,19.09501,Agent exited zone (destroyed on exit/trapped),0,2,0,0,2,0,0,1,0,10,6,1
+ZONE-Hallway 3-ForcedExit,ZoneOccupancy,Hallway 3,19.58743,84,1,Agent-15,0,True,16.65999,19.58743,Agent exited zone (destroyed on exit/trapped),0,1,0,0,1,0,0,1,0,10,6,1
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,19.73999,85,0,Agent-3,0,True,0,19.73999,Agent exited zone,0,0,0,0,0,0,0,1,0,10,6,1
+ZONE-Offices-Enter,ZoneOccupancy,Offices,19.73999,86,7,Agent-3,0,False,19.73999,0,Agent entered zone,0,7,0,0,0,0,0,1,0,10,7,1
+ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,20.99999,87,0,Agent-6,0,True,0,20.99999,Agent exited zone,0,0,0,0,0,0,0,0,0,10,7,1
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,20.99999,88,11,Agent-6,0,False,20.99999,0,Agent entered zone,0,11,0,0,0,0,0,0,0,11,7,1

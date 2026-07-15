@@ -1,8 +1,10 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 
-public class ClickAgentPlacer : MonoBehaviour
+public class ClickFireSpawn : MonoBehaviour
 {
     public GameObject agentPrefab;
     public Camera mainCamera;
