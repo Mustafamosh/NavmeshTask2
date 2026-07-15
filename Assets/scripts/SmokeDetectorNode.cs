@@ -15,18 +15,18 @@ public class SmokeDetectorNode : MonoBehaviour
 
     private FireSpread fireSpread;
     private AudioSource audioSource;
+    private bool hasLoggedMissingFireSpread;
 
     void Start()
     {
-        fireSpread = FindFirstObjectByType<FireSpread>();
         audioSource = GetComponent<AudioSource>();
-
-        if (fireSpread == null)
-            Debug.LogError($"{gameObject.name}: No FireSpread found.");
+        ResolveFireSpread();
     }
 
     void Update()
     {
+        ResolveFireSpread();
+
         if (fireSpread == null)
             return;
 
@@ -38,6 +38,29 @@ public class SmokeDetectorNode : MonoBehaviour
         {
             FireAlarmSystem.Instance.RecordFirstDetector(this);
             FireAlarmSystem.Instance.TriggerAlarm();
+        }
+    }
+
+    void ResolveFireSpread()
+    {
+        if (fireSpread != null)
+            return;
+
+        FireSpread[] fireSpreads = FindObjectsByType<FireSpread>(FindObjectsSortMode.None);
+
+        foreach (FireSpread candidate in fireSpreads)
+        {
+            if (candidate.name == "FireSpread_Spawned")
+            {
+                fireSpread = candidate;
+                break;
+            }
+        }
+
+        if (fireSpread == null && !hasLoggedMissingFireSpread)
+        {
+            Debug.LogWarning($"{gameObject.name}: Waiting for FireSpread_Spawned to be spawned.");
+            hasLoggedMissingFireSpread = true;
         }
     }
 

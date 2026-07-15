@@ -380,6 +380,9 @@ public class FireSpread : MonoBehaviour
 
     public float GetSmokeLevel(Vector3 position)
     {
+        if (fireGrid == null || smokeGrid == null)
+            return 0f;
+
         int gridX = Mathf.FloorToInt((position.x - gridOriginX) / cellSize);
         int gridZ = Mathf.FloorToInt((position.z - gridOriginZ) / cellSize);
 
@@ -466,6 +469,9 @@ public class FireSpread : MonoBehaviour
 
     public HazardReport IsHazardous3D(Vector3 position)
     {
+        if (fireGrid == null)
+            return new HazardReport { hazardous = false, status = "INITIALIZING", severity = 0f };
+
         int gridX = Mathf.FloorToInt((position.x - gridOriginX) / cellSize);
         int gridZ = Mathf.FloorToInt((position.z - gridOriginZ) / cellSize);
 
