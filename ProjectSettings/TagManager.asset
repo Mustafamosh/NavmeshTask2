@@ -8,6 +8,8 @@ TagManager:
   - Fire
   - Agent
   - Zone
+  - Obstacle
+  - Highlight
   layers:
   - Default
   - TransparentFX
