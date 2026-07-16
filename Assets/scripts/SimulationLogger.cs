@@ -1,32 +1,24 @@
 // SimulationLogger.cs
 //
-// CHANGES IN THIS VERSION
-//   - The log file is now opened in Awake instead of Start. Previously agents ran
-//     their Start before the logger ran its own, so SimulationLogger.filePath was
-//     still empty and every spawn PROFILE record was silently thrown away. Opening
-//     the file in Awake means the path exists before any agent needs it.
-//   - The vulnerability count now matches the simplified disability model, so it
-//     counts elderly agents, agents using a mobility aid, and agents that have
-//     become injured.
-//   - All existing behavior is preserved.
+// CHANGE IN THIS VERSION
+//   Logging is now controlled by the Start and Stop buttons through the controller.
+//   The file path is prepared in Awake but not cleared. BeginRun clears the file
+//   and turns logging on. StopLogging turns it off and leaves the finished JSON on
+//   disk. Nothing is written while the user is still in Setup, so the spawn and
+//   despawn churn of setting up agents does not pollute the log.
 using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 
-/// <summary>
-/// Central logger. Runs on a fixed tick and writes one JSON object per line
-/// capturing zones, agents, hazard, and events into a single JSONL file.
-/// This file is the input the AI coach reads later.
-/// </summary>
 public class SimulationLogger : MonoBehaviour
 {
-    // === 1. Settings and Shared State ===
     public float tickInterval = 0.4f;
     public static string filePath;
+    public static bool IsLogging = false;
     public FireSpread fireSpread;
+
     private bool alarmLogged = false;
 
-    // === 2. Exit Approach Zones ===
     [System.Serializable]
     public class ExitApproach
     {
@@ -35,21 +27,14 @@ public class SimulationLogger : MonoBehaviour
     }
     public List<ExitApproach> exitApproaches = new List<ExitApproach>();
 
-    // === 3. Internal Counters ===
     private float tickTimer = 0f;
     private int tickNumber = 0;
     private Dictionary<string, bool> approachBlocked = new Dictionary<string, bool>();
 
-    // The file must exist before any agent Start runs, otherwise spawn profile
-    // records are dropped. Awake is the earliest safe place to do this.
     void Awake()
     {
-        string folder = Application.persistentDataPath + "/llm-coach";
-        Directory.CreateDirectory(folder);
-        filePath = folder + "/simulation_data.jsonl";
-
-        if (File.Exists(filePath))
-            File.Delete(filePath);
+        SetupPath();
+        IsLogging = false;
     }
 
     void Start()
@@ -58,8 +43,36 @@ public class SimulationLogger : MonoBehaviour
             fireSpread = FindAnyObjectByType<FireSpread>();
     }
 
+    void SetupPath()
+    {
+        string folder = Application.persistentDataPath + "/llm-coach";
+        Directory.CreateDirectory(folder);
+        filePath = folder + "/simulation_data.jsonl";
+    }
+
+    // Called by the controller when the user presses Start.
+    public void BeginRun()
+    {
+        if (string.IsNullOrEmpty(filePath)) SetupPath();
+        if (File.Exists(filePath)) File.Delete(filePath);
+
+        tickTimer = 0f;
+        tickNumber = 0;
+        alarmLogged = false;
+        approachBlocked.Clear();
+        IsLogging = true;
+    }
+
+    // Called by the controller on Stop. The file stays on disk, complete.
+    public void StopLogging()
+    {
+        IsLogging = false;
+    }
+
     void Update()
     {
+        if (!IsLogging) return;
+
         tickTimer += Time.deltaTime;
         if (tickTimer >= tickInterval)
         {
@@ -73,7 +86,6 @@ public class SimulationLogger : MonoBehaviour
     {
         float timestamp = Time.time;
 
-        // === Zone occupancy ===
         Dictionary<string, int> zoneCounts = ZoneOccupancy.GetZoneCounts();
         foreach (var zone in zoneCounts)
         {
@@ -82,11 +94,10 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(record);
         }
 
-        // === Agent telemetry, only agents still active in the scene ===
-        AgentDataTracker[] agents = FindObjectsByType<AgentDataTracker>();
+        AgentDataTracker[] agents = FindObjectsByType<AgentDataTracker>(FindObjectsSortMode.None);
 
-        int vulnerableInside = 0;   // elderly, using a mobility aid, or injured
-        int criticalHealth = 0;     // below one third health and still inside
+        int vulnerableInside = 0;
+        int criticalHealth = 0;
 
         foreach (AgentDataTracker agent in agents)
         {
@@ -98,7 +109,6 @@ public class SimulationLogger : MonoBehaviour
             record.timeEnteringZone = agent.timeEnteringZone;
             record.exitTime = agent.exitTime;
 
-            // Per agent context for the AI coach.
             record.ageBand = agent.ageBand;
             record.disability = agent.spawnDisability;
             record.mobilityStatus = agent.mobilityStatus;
@@ -136,8 +146,7 @@ public class SimulationLogger : MonoBehaviour
             if (agent.maxHealth > 0f && agent.health / agent.maxHealth < 0.33f) criticalHealth++;
         }
 
-        // === Smoke detector readings ===
-        SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>();
+        SmokeDetectorNode[] detectors = FindObjectsByType<SmokeDetectorNode>(FindObjectsSortMode.None);
         foreach (SmokeDetectorNode detector in detectors)
         {
             SimulationRecord smokeRecord = new SimulationRecord(
@@ -152,7 +161,6 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(smokeRecord);
         }
 
-        // === Global hazard, burning cell count ===
         if (fireSpread != null)
         {
             SimulationRecord hazardRecord = new SimulationRecord("HAZ-Global", SensorType.Hazard, "Global", timestamp, tickNumber);
@@ -161,7 +169,6 @@ public class SimulationLogger : MonoBehaviour
             WriteRecord(hazardRecord);
         }
 
-        // === Alarm event, logged once ===
         if (FireAlarmSystem.Instance != null && FireAlarmSystem.Instance.alarmActive && !alarmLogged)
         {
             alarmLogged = true;
@@ -170,7 +177,6 @@ public class SimulationLogger : MonoBehaviour
             LogEvent("EVENT-Alarm", zone, "Global alarm started, first detector " + who + " in " + zone, timestamp, tickNumber);
         }
 
-        // === Blocked exit events ===
         if (fireSpread != null)
         {
             foreach (ExitApproach ex in exitApproaches)
@@ -185,14 +191,13 @@ public class SimulationLogger : MonoBehaviour
                 {
                     approachBlocked[ex.exitName] = blockedNow;
                     string details = blockedNow
-                        ? (ex.exitName + " blocked, fire in " + ex.approachZone.name)
+                        ? (ex.exitName + " blocked by fire in " + ex.approachZone.name)
                         : (ex.exitName + " clear again");
                     LogEvent("EVENT-" + ex.exitName, ex.exitName, details, timestamp, tickNumber);
                 }
             }
         }
 
-        // === Summary tick, whole building totals ===
         SimulationRecord summaryRecord = new SimulationRecord("Sys-Summary", SensorType.SimulationEvent, "Global", timestamp, tickNumber);
         summaryRecord.value = agents.Length;
         summaryRecord.eventDetails =
@@ -206,7 +211,9 @@ public class SimulationLogger : MonoBehaviour
 
     public static void WriteRecord(SimulationRecord record)
     {
+        if (!IsLogging) return;
         if (string.IsNullOrEmpty(filePath)) return;
+
         using (StreamWriter writer = new StreamWriter(filePath, append: true))
         {
             writer.WriteLine(JsonUtility.ToJson(record));

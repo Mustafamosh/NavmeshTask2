@@ -2,16 +2,13 @@
 // Consolidated: absorbs AgentExitBehavior and AgentAnimator.
 //
 // CHANGES IN THIS VERSION
-//   - The spawn PROFILE record is no longer dropped. In the previous run zero
-//     profile records were written, because agents spawned before
-//     SimulationLogger had set its file path, and WriteProfileRecord returned
-//     early. It now retries every frame until the logger is ready, then writes
-//     once and stops.
-//   - Disability is simplified to None or MobilityAid. Injury is reported
-//     separately through mobilityStatus, so an agent can be recorded as both
-//     using a mobility aid and injured at the same time.
-//   - Fire is not an instant kill. AgentNoise drains health from the fire, near
-//     fire, and low visibility bands, and calls RecordTrapped at zero health.
+//   - Exit detection only runs once the agent is actually evacuating. During setup
+//     the agents wander freely, and without this guard a wanderer could stroll into
+//     an exit and be deleted before the run even starts.
+//   - The spawn PROFILE record waits until logging has actually begun, so an agent
+//     that spawned during setup still records its profile the moment the run starts.
+//   - ResetCounters lets the Stop button clear the running totals so the next run
+//     starts from zero without reloading the scene.
 using UnityEngine;
 using UnityEngine.AI;
 using TMPro;
@@ -22,7 +19,6 @@ public class AgentDataTracker : MonoBehaviour
     [Header("ID Display")]
     public TextMeshPro idLabel;
 
-    // --- Schema Fields (public so the logger can read them) ---
     public string agentId;
     public float speed;
     public string currentZone = "Unknown";
@@ -30,7 +26,6 @@ public class AgentDataTracker : MonoBehaviour
     public bool hasExited = false;
     public float exitTime = 0f;
 
-    // --- Profile mirror, refreshed from AgentNoise every frame ---
     public string ageBand = "Adult";
     public string spawnDisability = "None";
     public string mobilityStatus = "Able";
@@ -42,29 +37,33 @@ public class AgentDataTracker : MonoBehaviour
     public float visibilityDamageTotal = 0f;
     public string trapReason = "None";
 
-    // --- Path History ---
     public List<string> pathHistory = new List<string>();
 
-    // --- Counters ---
     public static int agentsTrapped = 0;
     public static int agentsExited = 0;
 
-    // --- Exit Detection Radius (absorbed from AgentExitBehavior) ---
     public float exitRadius = 1.5f;
 
-    // --- Private ---
     private NavMeshAgent navAgent;
-    private Animator agentAnimator;      // Absorbed from AgentAnimator
-    private AgentNoise profile;          // Source of truth for age, disability, health
+    private Animator agentAnimator;
+    private AgentNoise profile;
+    private AgentExitNavigator navigator;
     private GameObject[] exits;
-    private bool lifecycleEnded = false; // Guard so exit and trap never both fire
-    private bool profileWritten = false; // Guard so the spawn record writes exactly once
+    private bool lifecycleEnded = false;
+    private bool profileWritten = false;
 
-    // --- ID Counter ---
     private static int nextId = 0;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
+    {
+        nextId = 0;
+        agentsTrapped = 0;
+        agentsExited = 0;
+    }
+
+    // Called by the Stop button through the controller.
+    public static void ResetCounters()
     {
         nextId = 0;
         agentsTrapped = 0;
@@ -87,8 +86,8 @@ public class AgentDataTracker : MonoBehaviour
         navAgent = GetComponent<NavMeshAgent>();
         agentAnimator = GetComponentInChildren<Animator>();
         profile = GetComponent<AgentNoise>();
+        navigator = GetComponent<AgentExitNavigator>();
 
-        // Cache exits once at start (absorbed from AgentExitBehavior)
         exits = GameObject.FindGameObjectsWithTag("Exit");
 
         MirrorProfile();
@@ -99,10 +98,8 @@ public class AgentDataTracker : MonoBehaviour
     {
         if (lifecycleEnded) return;
 
-        // Retry the spawn record until the logger has opened its file.
         if (!profileWritten) TryWriteProfileRecord();
 
-        // --- Speed tracking and animation (absorbed from AgentAnimator) ---
         if (navAgent != null)
         {
             speed = navAgent.velocity.magnitude;
@@ -110,22 +107,22 @@ public class AgentDataTracker : MonoBehaviour
                 agentAnimator.SetFloat("Speed", speed);
         }
 
-        // --- Keep the logged profile in sync with AgentNoise ---
         MirrorProfile();
 
-        // --- Exit proximity check (absorbed from AgentExitBehavior) ---
-        foreach (GameObject exit in exits)
+        // Only count reaching an exit once the agent is actually evacuating. A
+        // wandering agent during setup must not be treated as having escaped.
+        if (navigator != null && navigator.isEvacuating)
         {
-            if (exit == null) continue;
-            if (Vector3.Distance(transform.position, exit.transform.position) < exitRadius)
+            foreach (GameObject exit in exits)
             {
-                RecordExit(exit.name);
-                return;
+                if (exit == null) continue;
+                if (Vector3.Distance(transform.position, exit.transform.position) < exitRadius)
+                {
+                    RecordExit(exit.name);
+                    return;
+                }
             }
         }
-
-        // NOTE: fire is no longer an instant kill here. AgentNoise handles the
-        // gradual health drain and calls RecordTrapped once health reaches zero.
     }
 
     void MirrorProfile()
@@ -159,7 +156,6 @@ public class AgentDataTracker : MonoBehaviour
             currentZone = "Transition";
     }
 
-    // Called when the agent reaches an exit.
     public void RecordExit(string exitName)
     {
         if (lifecycleEnded) return;
@@ -171,14 +167,22 @@ public class AgentDataTracker : MonoBehaviour
 
         pathHistory.Add("Exited via " + exitName + " | T=" + exitTime.ToString("F2"));
 
-        WriteLifecycleRecord("Exited via " + exitName + " | Path: " + string.Join(" > ", pathHistory));
+        string details =
+            "Exited via " + exitName +
+            " | Age: " + ageBand +
+            " | Disability: " + spawnDisability +
+            " | Mobility at exit: " + mobilityStatus +
+            " | Health remaining: " + health.ToString("F1") + " of " + maxHealth.ToString("F0") +
+            " | Fire damage taken: " + fireDamageTotal.ToString("F1") +
+            " | Visibility damage taken: " + visibilityDamageTotal.ToString("F1") +
+            " | Path: " + string.Join(" > ", pathHistory);
 
-        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);   
+        WriteLifecycleRecord(details);
+
+        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);
         Destroy(gameObject);
     }
 
-    // Called by AgentNoise when health reaches zero.
-    // reason is Fire or LowVisibility, whichever caused more cumulative damage.
     public void RecordTrapped(string reason, float fireDamage, float visibilityDamage)
     {
         if (lifecycleEnded) return;
@@ -191,23 +195,33 @@ public class AgentDataTracker : MonoBehaviour
 
         pathHistory.Add("Trapped at " + currentZone + " | T=" + Time.time.ToString("F2"));
 
-        WriteLifecycleRecord("Trapped at " + currentZone + " | Path: " + string.Join(" > ", pathHistory));
+        string details =
+            "Trapped at " + currentZone +
+            " | Cause: " + reason +
+            " | Age: " + ageBand +
+            " | Disability: " + spawnDisability +
+            " | Mobility at collapse: " + mobilityStatus +
+            " | Fire damage taken: " + fireDamage.ToString("F1") +
+            " | Visibility damage taken: " + visibilityDamage.ToString("F1") +
+            " | Distance to nearest fire: " + distanceToFire.ToString("F2") +
+            " | Survived: " + Time.time.ToString("F1") + " seconds" +
+            " | Path: " + string.Join(" > ", pathHistory);
 
-        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);   
+        WriteLifecycleRecord(details);
+
+        ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);
         Destroy(gameObject);
     }
 
-    // Backward compatible overload.
     public void RecordTrapped(string reason)
     {
         RecordTrapped(reason, fireDamageTotal, visibilityDamageTotal);
     }
 
-    // Written once per agent, as soon as the logger has a file open, so the AI
-    // knows who each person is before anything happens to them.
     private void TryWriteProfileRecord()
     {
         if (profileWritten) return;
+        if (!SimulationLogger.IsLogging) return;
         if (string.IsNullOrEmpty(SimulationLogger.filePath)) return;
 
         profileWritten = true;
