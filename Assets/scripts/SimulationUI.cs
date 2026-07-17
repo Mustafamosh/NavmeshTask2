@@ -199,12 +199,12 @@ public class SimulationUI : MonoBehaviour
         if (agentCountLabel != null && agentCountSlider != null)
             agentCountLabel.text = "Agents: " + (int)agentCountSlider.value;
         if (youngLabel != null && youngSlider != null)
-            youngLabel.text = "Young: " + Mathf.RoundToInt(youngSlider.value) + " percent";
+            youngLabel.text = "Young: " + Mathf.RoundToInt(youngSlider.value) + "%";
         if (adultLabel != null && adultSlider != null)
-            adultLabel.text = "Adult: " + Mathf.RoundToInt(adultSlider.value) + " percent";
+            adultLabel.text = "Adult: " + Mathf.RoundToInt(adultSlider.value) + "%";
         if (elderlyLabel != null && elderlySlider != null)
-            elderlyLabel.text = "Elderly: " + Mathf.RoundToInt(elderlySlider.value) + " percent";
+            elderlyLabel.text = "Elderly: " + Mathf.RoundToInt(elderlySlider.value) + "%";
         if (disabledLabel != null && disabledSlider != null)
-            disabledLabel.text = "Disabled: " + Mathf.RoundToInt(disabledSlider.value) + " percent";
+            disabledLabel.text = "Disabled: " + Mathf.RoundToInt(disabledSlider.value) + "%";
     }
 }
