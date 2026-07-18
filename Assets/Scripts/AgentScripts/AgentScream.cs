@@ -1,3 +1,4 @@
+/*
 // AgentScream.cs
 // NEW FILE. Put this on the agent prefab, alongside AgentNoise and AgentDataTracker.
 //
@@ -105,7 +106,7 @@ public class AgentScream : MonoBehaviour
                 pendingDelay = -1f;
                 PlayScream();
             }
-            return;
+            return; 
         }
 
         EvaluateDanger();
@@ -183,3 +184,6 @@ public class AgentScream : MonoBehaviour
             AudioManager.Instance.ReleaseScream();
     }
 }
+*/
+
+// The original code is commented out above.

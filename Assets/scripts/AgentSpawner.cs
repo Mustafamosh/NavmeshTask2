@@ -37,6 +37,15 @@ public class AgentSpawner : MonoBehaviour
     void Awake()
     {
         CollectZones();
+        SimulationSettings.Load();
+
+        SetAgentCount(SimulationSettings.AgentCount);
+        SetDistribution(
+            SimulationSettings.YoungPct,
+            SimulationSettings.AdultPct,
+            SimulationSettings.ElderlyPct,
+            SimulationSettings.DisabledPct
+        );
     }
 
     // Every box collider on every object tagged Zone is a place agents can appear.
