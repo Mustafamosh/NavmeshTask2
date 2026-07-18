@@ -29,10 +29,16 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+<<<<<<< HEAD
   - {fileID: 7707612484547828224}
   - {fileID: 2891528787748796183}
   - {fileID: 5906659874912797876}
   - {fileID: 4443150844941062361}
+=======
+  - {fileID: 6006778259146617001}
+  - {fileID: 1191718876270692456}
+  - {fileID: 8229959177181465685}
+>>>>>>> origin/PhaseIII-Shaikha2
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &253831103217264913
@@ -45,7 +51,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 247022117298964842, guid: ff304a5303e1ef446840973d5c7a7b27, type: 3}
       propertyPath: m_Name
+<<<<<<< HEAD
       value: Highlight (1)
+=======
+      value: Exit2-Obstacle
+>>>>>>> origin/PhaseIII-Shaikha2
       objectReference: {fileID: 0}
     - target: {fileID: 3144933211732237830, guid: ff304a5303e1ef446840973d5c7a7b27, type: 3}
       propertyPath: m_LocalPosition.x
@@ -59,7 +69,105 @@ PrefabInstance:
       propertyPath: m_LocalPosition.z
       value: 12.539036
       objectReference: {fileID: 0}
+<<<<<<< HEAD
     - target: {fileID: 3144933211732237830, guid: ff304a5303e1ef446840973d5c7a7b27, type: 3}
+=======
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.5193431
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.8545659
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -117.424
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2380917230980897190, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: CollisionModule.enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6460476886830697357, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6796903612396269749, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_Name
+      value: Exit1-Obstacle
+      objectReference: {fileID: 0}
+    - target: {fileID: 6796903612396269749, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6796903612396269749, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 84033838350473355}
+  m_SourcePrefab: {fileID: 100100000, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+--- !u!1 &1460361147261293519 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6796903612396269749, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+  m_PrefabInstance: {fileID: 5338821005483205498}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &84033838350473355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1460361147261293519}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6df9f763c67b1e48862c298c3f3fd80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Toggle
+--- !u!4 &6006778259146617001 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+  m_PrefabInstance: {fileID: 5338821005483205498}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &7745523058477064070
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 339332720215771871}
+    m_Modifications:
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -11.260362
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 9.98865
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 12.584515
+      objectReference: {fileID: 0}
+    - target: {fileID: 1822568527354221523, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+>>>>>>> origin/PhaseIII-Shaikha2
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
@@ -87,6 +195,25 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+<<<<<<< HEAD
+=======
+    - target: {fileID: 2380917230980897190, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: CollisionModule.enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6460476886830697357, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6796903612396269749, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_Name
+      value: Exit3-Obstacle
+      objectReference: {fileID: 0}
+    - target: {fileID: 6796903612396269749, guid: 1cf4405635f16e74491dc4b2d47f6576, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+>>>>>>> origin/PhaseIII-Shaikha2
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

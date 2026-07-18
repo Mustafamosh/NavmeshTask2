@@ -1,23 +1,15 @@
 // AgentNoise.cs
 // The per agent profile and health hub.
 //
-// It holds the age band, the spawn disability, and a live health value.
-// Health drains from three hazard bands, all measured as pure distance to the
-// nearest object tagged Fire, because there is no smoke object in the scene yet.
-// The strongest band wins, so the drains never stack.
+// CHANGE IN THIS VERSION
+//   Added AssignProfile, so the spawner can hand an agent an exact age and
+//   disability instead of the agent rolling its own at random. This is what lets
+//   the user percentages be respected precisely. If no one assigns a profile, the
+//   agent still rolls its own, so the prefab works on its own in a test scene.
 //
-// CHANGES IN THIS VERSION
-//   - Disability is simplified. There is now only None or MobilityAid at spawn.
-//     The wheelchair category is gone.
-//   - Being hurt is now its own status. A healthy agent is Able, and as health
-//     falls it becomes Injured and then SeverelyInjured. An agent that spawned
-//     with a mobility aid and then gets hurt is reported as MobilityAid Injured,
-//     so the log always shows both facts.
-//   - Health drains far more slowly, so agents degrade and get trapped gradually.
-//   - The speed floor at low health is raised, so injured agents move slowly but
-//     do not crawl.
-//
-// When real smoke is added later, only ReadHazardBand needs to change.
+// Health drains from three hazard bands, measured as pure distance to the nearest
+// object tagged Fire. Strongest band wins. When smoke is added later, only
+// ReadHazardBand needs to change.
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -32,12 +24,11 @@ public class AgentNoise : MonoBehaviour
     [Header("Age, assigned at spawn")]
     public AgeBand ageBand = AgeBand.Adult;
 
-    [Tooltip("Speed multiplier per age band. Elderly agents move slower.")]
     public float youngSpeedFactor = 1.10f;
     public float adultSpeedFactor = 1.00f;
     public float elderlySpeedFactor = 0.70f;
 
-    [Header("Age spawn weights, they do not need to add up to 1")]
+    [Header("Age spawn weights, used only when no profile is assigned")]
     public float youngWeight = 0.25f;
     public float adultWeight = 0.55f;
     public float elderlyWeight = 0.20f;
@@ -50,10 +41,7 @@ public class AgentNoise : MonoBehaviour
     [Header("Disability at spawn")]
     public Disability spawnDisability = Disability.None;
 
-    [Tooltip("Chance an agent spawns already using a mobility aid.")]
     [Range(0f, 1f)] public float mobilityAidChance = 0.15f;
-
-    [Tooltip("Speed multiplier for an agent using a mobility aid.")]
     public float mobilityAidFactor = 0.65f;
 
     // ==========================================================
@@ -63,10 +51,7 @@ public class AgentNoise : MonoBehaviour
     public float maxHealth = 100f;
     public float health = 100f;
 
-    [Tooltip("Below this fraction of max health the agent is reported as Injured.")]
     [Range(0f, 1f)] public float injuredThreshold = 0.70f;
-
-    [Tooltip("Below this fraction of max health the agent is reported as SeverelyInjured.")]
     [Range(0f, 1f)] public float severelyInjuredThreshold = 0.35f;
 
     [Header("Fallback hazard values, used only if no HazardSettings is in the scene")]
@@ -85,13 +70,10 @@ public class AgentNoise : MonoBehaviour
     public float maxSpeed = 2.5f;
 
     [Header("Calm pre alarm wander speed")]
-    [Tooltip("Wander speed as a fraction of this agent evacuation speed.")]
     [Range(0.1f, 1f)] public float wanderSpeedFactor = 0.45f;
 
-    [Tooltip("Speed multiplier at zero health. Raised so hurt agents keep moving.")]
     [Range(0.1f, 1f)] public float minHealthSpeedFactor = 0.60f;
 
-    [Tooltip("Roll the profile in Awake rather than Start.")]
     public bool randomizeOnAwake = true;
 
     // ==========================================================
@@ -122,6 +104,7 @@ public class AgentNoise : MonoBehaviour
     private const float localCacheInterval = 0.25f;
 
     private bool profileRolled = false;
+    private bool externallyAssigned = false;
     private bool trapped = false;
 
     void Awake()
@@ -143,28 +126,45 @@ public class AgentNoise : MonoBehaviour
     }
 
     // ----------------------------------------------------------
-    // Profile roll, guarded so it can only ever happen once
+    // Called by the spawner to set an exact profile.
+    // Overrides any random roll and can be called again during setup to
+    // reshuffle the distribution across the crowd.
     // ----------------------------------------------------------
+    public void AssignProfile(AgeBand age, bool disabled)
+    {
+        ageBand = age;
+        spawnDisability = disabled ? Disability.MobilityAid : Disability.None;
+        externallyAssigned = true;
+        profileRolled = true;
+
+        RollSpeedOnly();
+        UpdateMobilityStatus();
+    }
+
     void RollProfile()
     {
         if (profileRolled) return;
         profileRolled = true;
 
-        // Weighted age band. A later scenario control can rewrite these weights
-        // before spawn to set how many young, adult, and elderly agents appear.
-        float total = Mathf.Max(0.0001f, youngWeight + adultWeight + elderlyWeight);
-        float r = Random.value * total;
+        if (!externallyAssigned)
+        {
+            float total = Mathf.Max(0.0001f, youngWeight + adultWeight + elderlyWeight);
+            float r = Random.value * total;
 
-        if (r < youngWeight) ageBand = AgeBand.Young;
-        else if (r < youngWeight + adultWeight) ageBand = AgeBand.Adult;
-        else ageBand = AgeBand.Elderly;
+            if (r < youngWeight) ageBand = AgeBand.Young;
+            else if (r < youngWeight + adultWeight) ageBand = AgeBand.Adult;
+            else ageBand = AgeBand.Elderly;
 
-        // Spawn disability. Only two options now, none or a mobility aid.
-        spawnDisability = Random.value < mobilityAidChance
-            ? Disability.MobilityAid
-            : Disability.None;
+            spawnDisability = Random.value < mobilityAidChance
+                ? Disability.MobilityAid
+                : Disability.None;
+        }
 
-        // Evacuation speed roll, then scaled by age.
+        RollSpeedOnly();
+    }
+
+    void RollSpeedOnly()
+    {
         if (minSpeed > maxSpeed) { float t = minSpeed; minSpeed = maxSpeed; maxSpeed = t; }
         float rolled = Random.Range(minSpeed, maxSpeed);
         baseEvacSpeed = rolled * AgeFactor();
@@ -185,9 +185,6 @@ public class AgentNoise : MonoBehaviour
         return spawnDisability == Disability.MobilityAid ? mobilityAidFactor : 1f;
     }
 
-    // ----------------------------------------------------------
-    // Main loop
-    // ----------------------------------------------------------
     void Update()
     {
         if (trapped || agent == null) return;
@@ -204,11 +201,6 @@ public class AgentNoise : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Pure distance hazard read. No smoke grid is used, because there is no
-    /// smoke object in the scene. When smoke is added later, replace only the
-    /// LowVisibility branch below with a smoke lookup and leave the rest alone.
-    /// </summary>
     HazardBand ReadHazardBand()
     {
         HazardSettings hs = HazardSettings.Instance;
@@ -221,14 +213,12 @@ public class AgentNoise : MonoBehaviour
             ? hs.DistanceToNearestFire(transform.position)
             : LocalDistanceToNearestFire();
 
-        // Strongest band wins. The drains never stack.
         if (distanceToFire <= inR) return HazardBand.InFire;
         if (distanceToFire <= nearR) return HazardBand.NearFire;
         if (distanceToFire <= visR) return HazardBand.LowVisibility;
         return HazardBand.Clear;
     }
 
-    // Only used if there is no HazardSettings object in the scene.
     float LocalDistanceToNearestFire()
     {
         localCacheTimer += Time.deltaTime;
@@ -275,18 +265,12 @@ public class AgentNoise : MonoBehaviour
                 break;
         }
 
-        // The dominant cause is what the trap reason and the logs report.
         if (fireDamageTotal <= 0f && visibilityDamageTotal <= 0f)
             dominantHazard = "None";
         else
             dominantHazard = fireDamageTotal >= visibilityDamageTotal ? "Fire" : "LowVisibility";
     }
 
-    /// <summary>
-    /// Reports the effective mobility of the agent. A spawn mobility aid and an
-    /// injury are separate facts, so an agent can be both at once and the log
-    /// will say so.
-    /// </summary>
     void UpdateMobilityStatus()
     {
         float pct = maxHealth > 0f ? health / maxHealth : 0f;

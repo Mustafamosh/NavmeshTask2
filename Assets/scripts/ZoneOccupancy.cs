@@ -1,3 +1,11 @@
+// ZoneOccupancy.cs
+//
+// CHANGES IN THIS VERSION
+//   - ResetRuntimeCounts clears the live occupancy numbers so the Stop button can
+//     wipe the board without reloading the scene.
+//   - ResyncFromScene recounts every agent against every zone at the moment the run
+//     starts, so the counts are accurate even though agents were spawned and moved
+//     around during setup, when trigger events are not a reliable source of truth.
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +24,7 @@ public class ZoneOccupancy : MonoBehaviour
     private static Dictionary<string, Dictionary<string, float>> agentsInZone = new Dictionary<string, Dictionary<string, float>>();
     private static Dictionary<string, Dictionary<string, int>> agentZoneTriggerCounts = new Dictionary<string, Dictionary<string, int>>();
     private static Dictionary<string, List<AgentZoneEntry>> zoneHistory = new Dictionary<string, List<AgentZoneEntry>>();
-    private static List<string> zoneOrder = new List<string>(); // fixed column order for CSV
+    private static List<string> zoneOrder = new List<string>();
     private static bool zonesRegistered = false;
 
     private static int totalAgentsExited = 0;
@@ -29,9 +37,7 @@ public class ZoneOccupancy : MonoBehaviour
         RegisterAllZones();
     }
 
-    // Scans the scene once for every object tagged "Zone" and builds the
-    // dictionaries from their names, instead of a hardcoded list.
-   private static void RegisterAllZones()
+    private static void RegisterAllZones()
     {
         if (zonesRegistered) return;
         zonesRegistered = true;
@@ -56,7 +62,6 @@ public class ZoneOccupancy : MonoBehaviour
             File.Delete(backupPath);
     }
 
-
     private static void RegisterZone(string zoneName)
     {
         if (zoneCounts.ContainsKey(zoneName)) return;
@@ -68,12 +73,60 @@ public class ZoneOccupancy : MonoBehaviour
         zoneOrder.Add(zoneName);
     }
 
+    // Clears the live numbers but keeps the zones registered.
+    public static void ResetRuntimeCounts()
+    {
+        foreach (string key in new List<string>(zoneCounts.Keys))
+            zoneCounts[key] = 0;
+
+        foreach (var kv in agentsInZone) kv.Value.Clear();
+        foreach (var kv in agentZoneTriggerCounts) kv.Value.Clear();
+
+        totalAgentsExited = 0;
+    }
+
+    // Recount everyone from scratch at the start of a run.
+    public static void ResyncFromScene()
+    {
+        RegisterAllZones();
+        ResetRuntimeCounts();
+
+        GameObject[] agents = GameObject.FindGameObjectsWithTag("Agent");
+        GameObject[] zones = GameObject.FindGameObjectsWithTag("Zone");
+
+        foreach (GameObject agent in agents)
+        {
+            AgentDataTracker tr = agent.GetComponent<AgentDataTracker>();
+            string id = tr != null ? tr.agentId : "unknown";
+            Vector3 pos = agent.transform.position;
+
+            foreach (GameObject zone in zones)
+            {
+                bool inside = false;
+                foreach (Collider col in zone.GetComponents<Collider>())
+                {
+                    if (col == null) continue;
+                    if ((col.ClosestPoint(pos) - pos).sqrMagnitude < 0.0001f) { inside = true; break; }
+                }
+
+                if (inside)
+                {
+                    string zn = zone.name;
+                    RegisterZone(zn);
+                    zoneCounts[zn]++;
+                    agentsInZone[zn][id] = Time.time;
+                    agentZoneTriggerCounts[zn][id] = 1;
+                }
+            }
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Agent")) return;
 
         string zoneName = gameObject.name;
-        RegisterZone(zoneName); // safety net if this object wasn't picked up at Awake
+        RegisterZone(zoneName);
 
         AgentDataTracker agentTracker = other.GetComponent<AgentDataTracker>();
         string agentId = agentTracker != null ? agentTracker.agentId : "unknown";
@@ -135,7 +188,7 @@ public class ZoneOccupancy : MonoBehaviour
         }
     }
 
-   public static void ForceRemoveAgent(string zoneName, string agentId)
+    public static void ForceRemoveAgent(string zoneName, string agentId)
     {
         if (!zoneCounts.ContainsKey(zoneName)) return;
 
@@ -227,7 +280,6 @@ public class ZoneOccupancy : MonoBehaviour
             zoneCounts[zoneName].ToString()
         };
 
-        // one column per discovered zone, in the same order every time
         foreach (string z in zoneOrder)
         {
             fields.Add(zoneCounts[z].ToString());
