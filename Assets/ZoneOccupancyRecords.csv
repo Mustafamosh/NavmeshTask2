@@ -1,0 +1,8 @@
+sensorId,sensorTypeString,location,timestamp,tickNumber,value,agentId,speed,hasExited,timeEnteringZone,exitTime,eventDetails,totalAgentsExited,zoneCount,zone_Exit_1,zone_Exit_2,zone_Exit_3,zone_Hallway_3,zone_Hallway_2,zone_Hallway_1,zone_Offices_7,zone_Offices_6,zone_Offices_5,zone_Offices_4,zone_Offices_3,zone_Offices_2,zone_Offices_1,zone_Bathrooms,zone_Classroom,zone_Main_Hall
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,2.899999,0,1,Agent-1,0,False,2.899999,0,Agent entered zone,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+ZONE-Offices 2-Enter,ZoneOccupancy,Offices 2,2.899999,1,1,Agent-0,0,False,2.899999,0,Agent entered zone,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1
+ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,4.619998,2,1,Agent-0,0,False,4.619998,0,Agent entered zone,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1
+ZONE-Offices 2-Exit,ZoneOccupancy,Offices 2,4.979998,3,0,Agent-0,0,True,0,4.979998,Agent exited zone,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,6.339998,4,1,Agent-0,0,False,6.339998,0,Agent entered zone,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1
+ZONE-Hallway 2-Exit,ZoneOccupancy,Hallway 2,7.119998,5,0,Agent-0,0,True,0,7.119998,Agent exited zone,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1
+ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,9.559997,6,1,Agent-0,0,False,9.559997,0,Agent entered zone,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1
