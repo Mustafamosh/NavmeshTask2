@@ -17,9 +17,11 @@ public class MainMenu : MonoBehaviour
     public TMP_Text elderlyLabel;
     public TMP_Text disabledLabel;
     public Button startButton;
+    public Button backButton;
 
     [Header("Scene")]
-    public string simulationSceneName = "Scene2-SimulationTESTING";
+    public string simulationSceneName = "3Simulation";
+    public string startMenuSceneName = "1Start-Menu";
 
     private bool updatingSliders = false;
 
@@ -56,6 +58,12 @@ public class MainMenu : MonoBehaviour
         {
             startButton.onClick.RemoveAllListeners();
             startButton.onClick.AddListener(StartSimulation);
+        }
+
+        if (backButton != null)
+        {
+            backButton.onClick.RemoveAllListeners();
+            backButton.onClick.AddListener(ReturnToStartMenu);
         }
 
         RefreshLabels();
@@ -113,6 +121,11 @@ public class MainMenu : MonoBehaviour
 
         SimulationSettings.Save(count, young, adult, elderly, disabled);
         SceneManager.LoadScene(simulationSceneName);
+    }
+
+    public void ReturnToStartMenu()
+    {
+        SceneManager.LoadScene(startMenuSceneName);
     }
 
     void RefreshLabels()

@@ -8,6 +8,11 @@
 //   Paused   Everything frozen with timeScale 0. Press again to resume.
 //
 // Stop clears everything back to Setup and leaves the finished JSON log on disk.
+//
+// CHANGE IN THIS VERSION
+//   The scene no longer has a Start button, so the run begins automatically the
+//   moment the scene loads. Fire clicking, exit blocking, and logging are all live
+//   immediately. Stop and Pause still work exactly as before.
 using UnityEngine;
 
 public class SimulationController : MonoBehaviour
@@ -25,6 +30,7 @@ public class SimulationController : MonoBehaviour
     void Start()
     {
         EnterSetup();
+        StartSimulation();
     }
 
     public void EnterSetup()
