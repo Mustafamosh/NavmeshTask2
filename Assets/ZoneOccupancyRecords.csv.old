@@ -1,0 +1,3 @@
+sensorId,sensorTypeString,location,timestamp,tickNumber,value,agentId,speed,hasExited,timeEnteringZone,exitTime,eventDetails,totalAgentsExited,zoneCount,zone_Classroom,zone_Main_Hall,zone_Hallway_1,zone_Offices_2,zone_Bathrooms,zone_Offices_5,zone_Offices_6,zone_Hallway_2
+ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,5.899998,2,1,Agent-12,0,False,5.899998,0,Agent entered zone,0,1,24,30,6,6,6,6,6,1
+ZONE-Hallway 1-ForcedExit,ZoneOccupancy,Hallway 1,7.281414,3,5,Agent-5,0,True,4.089705,7.281414,Agent exited zone (destroyed on exit/trapped),1,5,24,30,5,6,6,6,6,1
