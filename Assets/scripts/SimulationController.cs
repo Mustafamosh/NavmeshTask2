@@ -1,19 +1,14 @@
 // SimulationController.cs
-// NEW FILE. One in the scene. The brain of the publishable flow.
+// One in the scene. The brain of the publishable flow.
 //
-// States
-//   Setup    The user sets agent count and type. Agents spawn live and wander.
-//            Fire clicking and exit blocking are OFF. Logging is OFF.
-//   Running  Agent controls locked. Fire clicking and exit blocking ON. Logging ON.
-//   Paused   Everything frozen with timeScale 0. Press again to resume.
+// The scene has no Start button, so the run begins automatically when the scene
+// loads. Fire clicking, exit blocking, and logging are live immediately.
 //
-// Stop clears everything back to Setup and leaves the finished JSON log on disk.
-//
-// CHANGE IN THIS VERSION
-//   The scene no longer has a Start button, so the run begins automatically the
-//   moment the scene loads. Fire clicking, exit blocking, and logging are all live
-//   immediately. Stop and Pause still work exactly as before.
+// Stop hands the finished jsonl log to the user as a browser download, tears the
+// run down, and returns to the start menu. The run does not continue afterwards,
+// since the configuration controls only exist in the main menu.
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class SimulationController : MonoBehaviour
 {
@@ -26,6 +21,10 @@ public class SimulationController : MonoBehaviour
     public MonoBehaviour fireClickComponent;
     public SimulationLogger logger;
     public ExitBlocker exitBlocker;
+
+    [Header("Scene to return to on Stop")]
+    [Tooltip("Must match the name in the Scene List exactly.")]
+    public string startMenuSceneName = "1Start-Menu";
 
     void Start()
     {
@@ -50,8 +49,6 @@ public class SimulationController : MonoBehaviour
         state = State.Running;
         Time.timeScale = 1f;
 
-        // Count zone occupancy accurately from the agents that ended setup inside
-        // each room, then begin the fresh log.
         ZoneOccupancy.ResyncFromScene();
         if (logger != null) logger.BeginRun();
 
@@ -67,9 +64,16 @@ public class SimulationController : MonoBehaviour
 
     public void StopSimulation()
     {
-        // Finalize the log first so the JSON on disk is complete.
-        if (logger != null) logger.StopLogging();
+        // Time scale first, because the download and the scene load must not run
+        // while the game is frozen from a Pause.
         Time.timeScale = 1f;
+
+        // Hand the finished log to the user before anything is destroyed.
+        if (logger != null)
+        {
+            string filename = logger.DownloadLog();
+            Debug.Log("Simulation log handed to the user as " + filename);
+        }
 
         // Remove the clicked fire and any stray fire chunks.
         GameObject spawnedFire = GameObject.Find("FireSpread_Spawned");
@@ -87,7 +91,22 @@ public class SimulationController : MonoBehaviour
         AgentDataTracker.ResetCounters();
         ZoneOccupancy.ResetRuntimeCounts();
 
-        EnterSetup();
+        state = State.Setup;
+
+        ReturnToStartMenu();
+    }
+
+    void ReturnToStartMenu()
+    {
+        if (Application.CanStreamedLevelBeLoaded(startMenuSceneName))
+        {
+            SceneManager.LoadScene(startMenuSceneName);
+        }
+        else
+        {
+            Debug.LogWarning("SimulationController: scene " + startMenuSceneName +
+                             " is not in the Scene List, so Stop could not return to it.");
+        }
     }
 
     public bool AgentControlsLocked => state != State.Setup;

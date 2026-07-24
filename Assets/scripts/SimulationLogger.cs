@@ -1,14 +1,19 @@
 // SimulationLogger.cs
 //
 // CHANGE IN THIS VERSION
-//   Logging is now controlled by the Start and Stop buttons through the controller.
-//   The file path is prepared in Awake but not cleared. BeginRun clears the file
-//   and turns logging on. StopLogging turns it off and leaves the finished JSON on
-//   disk. Nothing is written while the user is still in Setup, so the spawn and
-//   despawn churn of setting up agents does not pollute the log.
+//   Records are now buffered in memory instead of being appended to disk one line
+//   at a time. Opening a stream per record was slow on desktop and is not viable in
+//   WebGL, where there is no real filesystem. BeginRun clears the buffer, and the
+//   whole run is turned into a single jsonl string only when it is handed over.
+//   In WebGL the string goes to the browser as a download. In the editor and in a
+//   desktop build it is written to persistentDataPath as before, so testing outside
+//   the browser still produces a file on disk.
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using System.Runtime.InteropServices;
 
 public class SimulationLogger : MonoBehaviour
 {
@@ -17,7 +22,15 @@ public class SimulationLogger : MonoBehaviour
     public static bool IsLogging = false;
     public FireSpread fireSpread;
 
+    // Every record written during the current run, one json object per entry.
+    private static readonly List<string> buffer = new List<string>();
+
     private bool alarmLogged = false;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")]
+    private static extern void DownloadFileFromUnity(string filename, string content);
+#endif
 
     [System.Serializable]
     public class ExitApproach
@@ -45,16 +58,17 @@ public class SimulationLogger : MonoBehaviour
 
     void SetupPath()
     {
+        // WebGL has no real filesystem, so this path is only used by the editor and
+        // by desktop builds. It is harmless to compute it either way.
         string folder = Application.persistentDataPath + "/llm-coach";
         Directory.CreateDirectory(folder);
         filePath = folder + "/simulation_data.jsonl";
     }
 
-    // Called by the controller when the user presses Start.
+    // Called by the controller when the run begins.
     public void BeginRun()
     {
-        if (string.IsNullOrEmpty(filePath)) SetupPath();
-        if (File.Exists(filePath)) File.Delete(filePath);
+        buffer.Clear();
 
         tickTimer = 0f;
         tickNumber = 0;
@@ -63,11 +77,45 @@ public class SimulationLogger : MonoBehaviour
         IsLogging = true;
     }
 
-    // Called by the controller on Stop. The file stays on disk, complete.
+    // Called by the controller on Stop.
     public void StopLogging()
     {
         IsLogging = false;
     }
+
+    /// <summary>
+    /// Turns the buffered run into a single jsonl file and hands it to the user.
+    /// In WebGL this opens the browser download prompt. Elsewhere it writes to
+    /// persistentDataPath so the same call works while testing in the editor.
+    /// Returns the filename that was produced.
+    /// </summary>
+    public string DownloadLog()
+    {
+        IsLogging = false;
+
+        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string filename = "simulation_data_" + stamp + ".jsonl";
+
+        StringBuilder sb = new StringBuilder();
+        foreach (string line in buffer)
+            sb.Append(line).Append('\n');
+
+        string content = sb.ToString();
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        DownloadFileFromUnity(filename, content);
+#else
+        string folder = Application.persistentDataPath + "/llm-coach";
+        Directory.CreateDirectory(folder);
+        string outPath = folder + "/" + filename;
+        File.WriteAllText(outPath, content, new UTF8Encoding(false));
+        Debug.Log("Log written to " + outPath);
+#endif
+
+        return filename;
+    }
+
+    public static int BufferedRecordCount => buffer.Count;
 
     void Update()
     {
@@ -212,12 +260,7 @@ public class SimulationLogger : MonoBehaviour
     public static void WriteRecord(SimulationRecord record)
     {
         if (!IsLogging) return;
-        if (string.IsNullOrEmpty(filePath)) return;
-
-        using (StreamWriter writer = new StreamWriter(filePath, append: true))
-        {
-            writer.WriteLine(JsonUtility.ToJson(record));
-        }
+        buffer.Add(JsonUtility.ToJson(record));
     }
 
     public static void LogEvent(string id, string location, string details, float time, int tick)
