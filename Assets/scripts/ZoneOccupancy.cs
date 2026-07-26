@@ -1,7 +1,21 @@
+// ZoneOccupancy.cs
+//
+// CHANGES IN THIS VERSION
+//   - All System.IO file writing has been removed. The CSV was written to
+//     Application.dataPath, which is a URL in WebGL and a read only folder in a
+//     desktop build, so every write threw DirectoryNotFoundException. Because the
+//     write sat inside AssignZone and ClearZone, the exception aborted zone
+//     assignment and prevented agents from being removed on exit.
+//   - Rows are now buffered in memory and can be fetched with GetCsv, so the data
+//     is still available for the dashboard without ever touching a filesystem.
+//
+// PREVIOUS BEHAVIOUR, UNCHANGED
+//   An agent belongs to exactly ONE zone at a time. Ownership goes to the most
+//   recently entered volume, falling back to any other volume the agent is still
+//   standing in, so the sum of zone counts always equals the number inside.
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
 
 public class ZoneOccupancy : MonoBehaviour
 {
@@ -12,170 +26,323 @@ public class ZoneOccupancy : MonoBehaviour
         public float exitTime;
     }
 
-    private static Dictionary<string, int> zoneCounts = new Dictionary<string, int>();
-    private static Dictionary<string, Dictionary<string, float>> agentsInZone = new Dictionary<string, Dictionary<string, float>>();
-    private static Dictionary<string, Dictionary<string, int>> agentZoneTriggerCounts = new Dictionary<string, Dictionary<string, int>>();
-    private static Dictionary<string, List<AgentZoneEntry>> zoneHistory = new Dictionary<string, List<AgentZoneEntry>>();
-    private static List<string> zoneOrder = new List<string>(); // fixed column order for CSV
+    // The single zone each agent is currently assigned to. Source of truth.
+    private static Dictionary<string, string> agentCurrentZone
+        = new Dictionary<string, string>();
+
+    // When the agent was assigned to that zone.
+    private static Dictionary<string, float> agentEntryTime
+        = new Dictionary<string, float>();
+
+    // How many colliders of a given agent currently overlap a given zone.
+    private static Dictionary<string, Dictionary<string, int>> agentZoneTriggerCounts
+        = new Dictionary<string, Dictionary<string, int>>();
+
+    private static Dictionary<string, List<AgentZoneEntry>> zoneHistory
+        = new Dictionary<string, List<AgentZoneEntry>>();
+
+    private static List<string> zoneOrder = new List<string>();
     private static bool zonesRegistered = false;
 
     private static int totalAgentsExited = 0;
     private static int tickNumber = 0;
-    private static string csvFileName = "ZoneOccupancyRecords.csv";
-    private static string CsvFilePath => Path.Combine(Application.dataPath, csvFileName);
+
+    // Every CSV row produced this run, held in memory instead of on disk.
+    private static readonly List<string> csvRows = new List<string>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        agentCurrentZone.Clear();
+        agentEntryTime.Clear();
+        agentZoneTriggerCounts.Clear();
+        zoneHistory.Clear();
+        zoneOrder.Clear();
+        csvRows.Clear();
+        zonesRegistered = false;
+        totalAgentsExited = 0;
+        tickNumber = 0;
+    }
 
     private void Awake()
     {
         RegisterAllZones();
     }
 
-    // Scans the scene once for every object tagged "Zone" and builds the
-    // dictionaries from their names, instead of a hardcoded list.
-   private static void RegisterAllZones()
+    private static void RegisterAllZones()
     {
         if (zonesRegistered) return;
         zonesRegistered = true;
 
-        ResetCsvFile();
+        csvRows.Clear();
 
         GameObject[] zoneObjects = GameObject.FindGameObjectsWithTag("Zone");
         foreach (GameObject zoneObj in zoneObjects)
-        {
             RegisterZone(zoneObj.name);
-        }
     }
-
-    private static void ResetCsvFile()
-    {
-        string path = CsvFilePath;
-        if (File.Exists(path))
-            File.Delete(path);
-
-        string backupPath = path + ".old";
-        if (File.Exists(backupPath))
-            File.Delete(backupPath);
-    }
-
 
     private static void RegisterZone(string zoneName)
     {
-        if (zoneCounts.ContainsKey(zoneName)) return;
+        if (agentZoneTriggerCounts.ContainsKey(zoneName)) return;
 
-        zoneCounts[zoneName] = 0;
-        agentsInZone[zoneName] = new Dictionary<string, float>();
         agentZoneTriggerCounts[zoneName] = new Dictionary<string, int>();
         zoneHistory[zoneName] = new List<AgentZoneEntry>();
         zoneOrder.Add(zoneName);
     }
 
-    private void OnTriggerEnter(Collider other)
+    // Resolves the owning agent from any collider, including one sitting on a
+    // child character model. Returns null when the collider is not an agent.
+    private static AgentDataTracker ResolveAgent(Collider other)
     {
-        if (!other.CompareTag("Agent")) return;
+        if (other == null) return null;
+        return other.GetComponentInParent<AgentDataTracker>();
+    }
 
-        string zoneName = gameObject.name;
-        RegisterZone(zoneName); // safety net if this object wasn't picked up at Awake
+    public static void ResetRuntimeCounts()
+    {
+        agentCurrentZone.Clear();
+        agentEntryTime.Clear();
+        foreach (var kv in agentZoneTriggerCounts) kv.Value.Clear();
+        totalAgentsExited = 0;
+    }
 
-        AgentDataTracker agentTracker = other.GetComponent<AgentDataTracker>();
-        string agentId = agentTracker != null ? agentTracker.agentId : "unknown";
+    // Recount everyone from scratch at the start of a run.
+    public static void ResyncFromScene()
+    {
+        RegisterAllZones();
+        ResetRuntimeCounts();
 
-        float entryTime = Time.time;
-        int triggerCount = 0;
-        agentZoneTriggerCounts[zoneName].TryGetValue(agentId, out triggerCount);
-        triggerCount++;
-        agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
+        AgentDataTracker[] agents =
+            Object.FindObjectsByType<AgentDataTracker>(FindObjectsSortMode.None);
 
-        if (triggerCount == 1)
+        GameObject[] zoneObjects = GameObject.FindGameObjectsWithTag("Zone");
+
+        foreach (AgentDataTracker tracker in agents)
         {
-            zoneCounts[zoneName]++;
-            agentsInZone[zoneName][agentId] = entryTime;
-            CreateZoneOccupancyRecord(zoneName, agentId, "Enter", entryTime, 0f);
+            if (tracker == null) continue;
+            if (string.IsNullOrEmpty(tracker.agentId)) continue;
+
+            string id = tracker.agentId;
+            Vector3 pos = tracker.transform.position;
+
+            string bestZone = null;
+            float bestVolume = float.MaxValue;
+
+            foreach (GameObject zoneObj in zoneObjects)
+            {
+                float volume;
+                if (!IsInsideZoneObject(zoneObj, pos, out volume)) continue;
+
+                RegisterZone(zoneObj.name);
+
+                agentZoneTriggerCounts[zoneObj.name][id] = 1;
+
+                // The tightest containing volume is the real room.
+                if (volume < bestVolume)
+                {
+                    bestVolume = volume;
+                    bestZone = zoneObj.name;
+                }
+            }
+
+            if (bestZone != null)
+            {
+                agentCurrentZone[id] = bestZone;
+                agentEntryTime[id] = Time.time;
+            }
         }
     }
 
-    private void OnTriggerExit(Collider other)
+    // Containment test that does not rely on ClosestPoint alone, which silently
+    // fails on non convex mesh colliders and reports every point as inside.
+    private static bool IsInsideZoneObject(GameObject zoneObj, Vector3 pos, out float volume)
     {
-        if (!other.CompareTag("Agent")) return;
+        volume = float.MaxValue;
+        bool inside = false;
+
+        foreach (Collider col in zoneObj.GetComponents<Collider>())
+        {
+            if (col == null || !col.enabled) continue;
+            if (!col.bounds.Contains(pos)) continue;
+
+            MeshCollider mc = col as MeshCollider;
+            bool hit;
+
+            if (mc != null && !mc.convex)
+                hit = true;
+            else
+                hit = (col.ClosestPoint(pos) - pos).sqrMagnitude < 0.0001f;
+
+            if (!hit) continue;
+
+            inside = true;
+            Vector3 s = col.bounds.size;
+            float v = s.x * s.y * s.z;
+            if (v < volume) volume = v;
+        }
+
+        return inside;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        AgentDataTracker tracker = ResolveAgent(other);
+        if (tracker == null) return;
+
+        string agentId = tracker.agentId;
+        if (string.IsNullOrEmpty(agentId)) return;
 
         string zoneName = gameObject.name;
         RegisterZone(zoneName);
 
-        AgentDataTracker agentTracker = other.GetComponent<AgentDataTracker>();
-        string agentId = agentTracker != null ? agentTracker.agentId : "unknown";
+        int triggerCount;
+        agentZoneTriggerCounts[zoneName].TryGetValue(agentId, out triggerCount);
+        agentZoneTriggerCounts[zoneName][agentId] = triggerCount + 1;
 
-        int triggerCount = agentZoneTriggerCounts[zoneName].ContainsKey(agentId) ? agentZoneTriggerCounts[zoneName][agentId] : 0;
-        if (triggerCount > 0)
-        {
-            triggerCount--;
-            agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
-        }
-
-        if (triggerCount == 0)
-        {
-            zoneCounts[zoneName]--;
-
-            if (agentsInZone[zoneName].ContainsKey(agentId))
-            {
-                float entryTime = agentsInZone[zoneName][agentId];
-                float exitTime = Time.time;
-
-                zoneHistory[zoneName].Add(new AgentZoneEntry
-                {
-                    agentId = agentId,
-                    entryTime = entryTime,
-                    exitTime = exitTime
-                });
-
-                agentsInZone[zoneName].Remove(agentId);
-            }
-
-            totalAgentsExited = AgentDataTracker.agentsExited;
-            float currentExitTime = Time.time;
-
-            CreateZoneOccupancyRecord(zoneName, agentId, "Exit", 0f, currentExitTime);
-        }
+        AssignZone(agentId, zoneName);
     }
 
-   public static void ForceRemoveAgent(string zoneName, string agentId)
+    private void OnTriggerExit(Collider other)
     {
-        if (!zoneCounts.ContainsKey(zoneName)) return;
+        AgentDataTracker tracker = ResolveAgent(other);
+        if (tracker == null) return;
 
-        int triggerCount = agentZoneTriggerCounts[zoneName].ContainsKey(agentId) ? agentZoneTriggerCounts[zoneName][agentId] : 0;
+        string agentId = tracker.agentId;
+        if (string.IsNullOrEmpty(agentId)) return;
+
+        string zoneName = gameObject.name;
+        RegisterZone(zoneName);
+
+        int triggerCount;
+        if (!agentZoneTriggerCounts[zoneName].TryGetValue(agentId, out triggerCount)) return;
         if (triggerCount <= 0) return;
 
-        agentZoneTriggerCounts[zoneName][agentId] = 0;
-        zoneCounts[zoneName]--;
+        triggerCount--;
+        agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
 
-        float entryTime = 0f;
-        float exitTime = Time.time;
+        if (triggerCount > 0) return;
 
-        if (agentsInZone[zoneName].ContainsKey(agentId))
+        string current;
+        if (!agentCurrentZone.TryGetValue(agentId, out current)) return;
+        if (current != zoneName) return;
+
+        string fallback = FindOverlappingZone(agentId, zoneName);
+
+        if (fallback != null)
+            AssignZone(agentId, fallback);
+        else
+            ClearZone(agentId, "Exit");
+    }
+
+    private static string FindOverlappingZone(string agentId, string excludeZone)
+    {
+        foreach (var kv in agentZoneTriggerCounts)
         {
-            entryTime = agentsInZone[zoneName][agentId];
+            if (kv.Key == excludeZone) continue;
 
-            zoneHistory[zoneName].Add(new AgentZoneEntry
-            {
-                agentId = agentId,
-                entryTime = entryTime,
-                exitTime = exitTime
-            });
+            int c;
+            if (kv.Value.TryGetValue(agentId, out c) && c > 0)
+                return kv.Key;
+        }
+        return null;
+    }
 
-            agentsInZone[zoneName].Remove(agentId);
+    // Moves the agent into a zone, closing off the previous one first.
+    // The dictionary is now updated BEFORE the record is created, so even if
+    // record creation ever fails the occupancy state stays correct.
+    private static void AssignZone(string agentId, string zoneName)
+    {
+        string previous;
+        bool hadPrevious = agentCurrentZone.TryGetValue(agentId, out previous);
+
+        if (hadPrevious && previous == zoneName) return;
+
+        agentCurrentZone[agentId] = zoneName;
+        agentEntryTime[agentId] = Time.time;
+
+        if (hadPrevious)
+        {
+            CloseHistory(agentId, previous);
+            CreateZoneOccupancyRecord(previous, agentId, "Exit", 0f, Time.time);
         }
 
+        CreateZoneOccupancyRecord(zoneName, agentId, "Enter", Time.time, 0f);
+    }
+
+    private static void ClearZone(string agentId, string eventType)
+    {
+        string previous;
+        if (!agentCurrentZone.TryGetValue(agentId, out previous)) return;
+
+        float entryTime = agentEntryTime.ContainsKey(agentId) ? agentEntryTime[agentId] : 0f;
+
+        CloseHistory(agentId, previous);
+        agentCurrentZone.Remove(agentId);
+        agentEntryTime.Remove(agentId);
+
         totalAgentsExited = AgentDataTracker.agentsExited;
-        CreateZoneOccupancyRecord(zoneName, agentId, "ForcedExit", entryTime, exitTime);
+        CreateZoneOccupancyRecord(previous, agentId, eventType, entryTime, Time.time);
+    }
+
+    private static void CloseHistory(string agentId, string zoneName)
+    {
+        if (!zoneHistory.ContainsKey(zoneName)) return;
+
+        float entryTime = agentEntryTime.ContainsKey(agentId) ? agentEntryTime[agentId] : 0f;
+
+        zoneHistory[zoneName].Add(new AgentZoneEntry
+        {
+            agentId = agentId,
+            entryTime = entryTime,
+            exitTime = Time.time
+        });
+    }
+
+    // The zoneName argument is kept for compatibility with existing call sites but
+    // is not trusted, because currentZone is often "Transition" or "Unknown" at the
+    // moment an agent is destroyed.
+    public static void ForceRemoveAgent(string zoneName, string agentId)
+    {
+        if (string.IsNullOrEmpty(agentId)) return;
+
+        ClearZone(agentId, "ForcedExit");
+
+        foreach (var kv in agentZoneTriggerCounts)
+            if (kv.Value.ContainsKey(agentId)) kv.Value[agentId] = 0;
+    }
+
+    public static void ForceRemoveAgent(string agentId)
+    {
+        ForceRemoveAgent(null, agentId);
     }
 
     public static Dictionary<string, int> GetZoneCounts()
     {
-        return new Dictionary<string, int>(zoneCounts);
+        Dictionary<string, int> counts = new Dictionary<string, int>();
+
+        foreach (string z in zoneOrder)
+            counts[z] = 0;
+
+        foreach (var kv in agentCurrentZone)
+        {
+            if (!counts.ContainsKey(kv.Value)) counts[kv.Value] = 0;
+            counts[kv.Value]++;
+        }
+
+        return counts;
     }
 
     public static Dictionary<string, float> GetAgentsInZone(string zoneName)
     {
-        if (agentsInZone.ContainsKey(zoneName))
-            return new Dictionary<string, float>(agentsInZone[zoneName]);
-        return new Dictionary<string, float>();
+        Dictionary<string, float> result = new Dictionary<string, float>();
+
+        foreach (var kv in agentCurrentZone)
+        {
+            if (kv.Value != zoneName) continue;
+            result[kv.Key] = agentEntryTime.ContainsKey(kv.Key) ? agentEntryTime[kv.Key] : 0f;
+        }
+
+        return result;
     }
 
     public static List<AgentZoneEntry> GetZoneHistory(string zoneName)
@@ -183,6 +350,14 @@ public class ZoneOccupancy : MonoBehaviour
         if (zoneHistory.ContainsKey(zoneName))
             return new List<AgentZoneEntry>(zoneHistory[zoneName]);
         return new List<AgentZoneEntry>();
+    }
+
+    private static int CountIn(string zoneName)
+    {
+        int n = 0;
+        foreach (var kv in agentCurrentZone)
+            if (kv.Value == zoneName) n++;
+        return n;
     }
 
     private static void CreateZoneOccupancyRecord(string zoneName, string agentId, string eventType, float entryTime, float exitTime)
@@ -196,7 +371,7 @@ public class ZoneOccupancy : MonoBehaviour
         );
 
         record.agentId = agentId;
-        record.value = zoneCounts[zoneName];
+        record.value = CountIn(zoneName);
         record.speed = 0f;
         record.hasExited = eventType == "Exit" || eventType == "ForcedExit";
         record.timeEnteringZone = entryTime;
@@ -205,10 +380,11 @@ public class ZoneOccupancy : MonoBehaviour
             : eventType == "ForcedExit" ? "Agent exited zone (destroyed on exit/trapped)"
             : "Agent exited zone";
 
-        string path = CsvFilePath;
-        string header = BuildCsvHeader();
-        EnsureCsvHeader(path, header);
+        // Goes into the main jsonl log, which is what the dashboard reads and what
+        // the Stop button downloads.
+        SimulationLogger.WriteRecord(record);
 
+        // Also kept as a CSV row in memory, for anyone who wants the flat format.
         List<string> fields = new List<string>
         {
             record.sensorId,
@@ -224,16 +400,13 @@ public class ZoneOccupancy : MonoBehaviour
             record.exitTime.ToString(),
             record.eventDetails,
             totalAgentsExited.ToString(),
-            zoneCounts[zoneName].ToString()
+            CountIn(zoneName).ToString()
         };
 
-        // one column per discovered zone, in the same order every time
         foreach (string z in zoneOrder)
-        {
-            fields.Add(zoneCounts[z].ToString());
-        }
+            fields.Add(CountIn(z).ToString());
 
-        File.AppendAllText(path, string.Join(",", fields) + "\n");
+        csvRows.Add(string.Join(",", fields));
     }
 
     private static string BuildCsvHeader()
@@ -243,23 +416,17 @@ public class ZoneOccupancy : MonoBehaviour
         return zoneColumns.Length > 0 ? baseHeader + "," + zoneColumns : baseHeader;
     }
 
-    private static void EnsureCsvHeader(string path, string header)
+    /// <summary>
+    /// The whole run as a CSV string, header included. Nothing is written to disk,
+    /// so this is safe in WebGL. Call it if you ever want a CSV download alongside
+    /// the jsonl one.
+    /// </summary>
+    public static string GetCsv()
     {
-        if (!File.Exists(path))
-        {
-            File.WriteAllText(path, header + "\n");
-            return;
-        }
-
-        string[] existingLines = File.ReadAllLines(path);
-        if (existingLines.Length == 0 || existingLines[0] != header)
-        {
-            string backupPath = path + ".old";
-            if (File.Exists(backupPath))
-                File.Delete(backupPath);
-
-            File.Move(path, backupPath);
-            File.WriteAllText(path, header + "\n");
-        }
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.Append(BuildCsvHeader()).Append('\n');
+        foreach (string row in csvRows)
+            sb.Append(row).Append('\n');
+        return sb.ToString();
     }
 }

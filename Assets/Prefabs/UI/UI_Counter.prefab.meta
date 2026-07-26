@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<< HEAD:Assets/Prefabs/UI/UI_Counter.prefab.meta
 guid: a9a79b53c1fe4ca40878de4acb5077ec
+=======
+guid: 570c46a4dba917641992493f563c7bae
+>>>>>>> origin/PhaseIII-Shaikha2:Assets/Prefabs/UI_Counter.prefab.meta
 PrefabImporter:
   externalObjects: {}
   userData: 

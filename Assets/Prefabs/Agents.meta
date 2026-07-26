@@ -1,6 +1,10 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:Assets/Prefabs/Agents.meta
 guid: f00bfeb726abf3b4288d09fae1dbae5c
 folderAsset: yes
+========
+guid: bf8568e16da0f8341ab9842e631fcfe4
+>>>>>>>> origin/PhaseIII-Shaikha2:Assets/Scenes/Scene2-SimulationTESTING.unity.meta
 DefaultImporter:
   externalObjects: {}
   userData: 
