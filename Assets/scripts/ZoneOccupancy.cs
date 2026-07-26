@@ -1,26 +1,21 @@
 // ZoneOccupancy.cs
 //
 // CHANGES IN THIS VERSION
-//   - An agent now belongs to exactly ONE zone at a time. Zone trigger volumes
-//     overlap each other around doorways, and the previous version faithfully
-//     counted an agent in every volume it touched, which inflated the totals to
-//     roughly double the real headcount while agents were walking.
-//   - Ownership goes to the most recently entered volume. On leaving a volume the
-//     agent falls back to any other volume it is still standing in, so there is no
-//     gap where an agent belongs to no zone at all.
-//   - Because the map holds one entry per agent, the sum of all zone counts is
-//     always equal to the number of agents inside the building, by construction.
-//   - Agent identity is resolved with GetComponentInParent, so a collider on a
-//     child character model resolves to the correct agent.
-//   - ResyncFromScene iterates AgentDataTracker components rather than objects
-//     tagged Agent, and picks the tightest containing volume.
-//   - ForceRemoveAgent clears the agent regardless of which zone name is passed.
-//   - Statics are cleared on subsystem registration, so returning from the main
-//     menu to the simulation scene starts from a clean board.
+//   - All System.IO file writing has been removed. The CSV was written to
+//     Application.dataPath, which is a URL in WebGL and a read only folder in a
+//     desktop build, so every write threw DirectoryNotFoundException. Because the
+//     write sat inside AssignZone and ClearZone, the exception aborted zone
+//     assignment and prevented agents from being removed on exit.
+//   - Rows are now buffered in memory and can be fetched with GetCsv, so the data
+//     is still available for the dashboard without ever touching a filesystem.
+//
+// PREVIOUS BEHAVIOUR, UNCHANGED
+//   An agent belongs to exactly ONE zone at a time. Ownership goes to the most
+//   recently entered volume, falling back to any other volume the agent is still
+//   standing in, so the sum of zone counts always equals the number inside.
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
 
 public class ZoneOccupancy : MonoBehaviour
 {
@@ -39,8 +34,7 @@ public class ZoneOccupancy : MonoBehaviour
     private static Dictionary<string, float> agentEntryTime
         = new Dictionary<string, float>();
 
-    // How many colliders of a given agent currently overlap a given zone. Used to
-    // work out which volume to fall back to when the agent leaves one.
+    // How many colliders of a given agent currently overlap a given zone.
     private static Dictionary<string, Dictionary<string, int>> agentZoneTriggerCounts
         = new Dictionary<string, Dictionary<string, int>>();
 
@@ -52,8 +46,9 @@ public class ZoneOccupancy : MonoBehaviour
 
     private static int totalAgentsExited = 0;
     private static int tickNumber = 0;
-    private static string csvFileName = "ZoneOccupancyRecords.csv";
-    private static string CsvFilePath => Path.Combine(Application.dataPath, csvFileName);
+
+    // Every CSV row produced this run, held in memory instead of on disk.
+    private static readonly List<string> csvRows = new List<string>();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
@@ -63,6 +58,7 @@ public class ZoneOccupancy : MonoBehaviour
         agentZoneTriggerCounts.Clear();
         zoneHistory.Clear();
         zoneOrder.Clear();
+        csvRows.Clear();
         zonesRegistered = false;
         totalAgentsExited = 0;
         tickNumber = 0;
@@ -78,20 +74,11 @@ public class ZoneOccupancy : MonoBehaviour
         if (zonesRegistered) return;
         zonesRegistered = true;
 
-        ResetCsvFile();
+        csvRows.Clear();
 
         GameObject[] zoneObjects = GameObject.FindGameObjectsWithTag("Zone");
         foreach (GameObject zoneObj in zoneObjects)
             RegisterZone(zoneObj.name);
-    }
-
-    private static void ResetCsvFile()
-    {
-        string path = CsvFilePath;
-        if (File.Exists(path)) File.Delete(path);
-
-        string backupPath = path + ".old";
-        if (File.Exists(backupPath)) File.Delete(backupPath);
     }
 
     private static void RegisterZone(string zoneName)
@@ -148,11 +135,9 @@ public class ZoneOccupancy : MonoBehaviour
 
                 RegisterZone(zoneObj.name);
 
-                // Mark the overlap so a later trigger exit can fall back correctly.
                 agentZoneTriggerCounts[zoneObj.name][id] = 1;
 
-                // The tightest containing volume is the real room. A hallway or an
-                // exit volume that spills over is always the larger one.
+                // The tightest containing volume is the real room.
                 if (volume < bestVolume)
                 {
                     bestVolume = volume;
@@ -184,7 +169,7 @@ public class ZoneOccupancy : MonoBehaviour
             bool hit;
 
             if (mc != null && !mc.convex)
-                hit = true;   // ClosestPoint is unreliable here, bounds is the best available
+                hit = true;
             else
                 hit = (col.ClosestPoint(pos) - pos).sqrMagnitude < 0.0001f;
 
@@ -235,15 +220,12 @@ public class ZoneOccupancy : MonoBehaviour
         triggerCount--;
         agentZoneTriggerCounts[zoneName][agentId] = triggerCount;
 
-        // Still overlapping this volume with another collider, nothing changes.
         if (triggerCount > 0) return;
 
-        // Only matters if this was the zone the agent was assigned to.
         string current;
         if (!agentCurrentZone.TryGetValue(agentId, out current)) return;
         if (current != zoneName) return;
 
-        // Hand the agent to any other volume it is still standing in.
         string fallback = FindOverlappingZone(agentId, zoneName);
 
         if (fallback != null)
@@ -266,18 +248,24 @@ public class ZoneOccupancy : MonoBehaviour
     }
 
     // Moves the agent into a zone, closing off the previous one first.
+    // The dictionary is now updated BEFORE the record is created, so even if
+    // record creation ever fails the occupancy state stays correct.
     private static void AssignZone(string agentId, string zoneName)
     {
         string previous;
-        if (agentCurrentZone.TryGetValue(agentId, out previous))
+        bool hadPrevious = agentCurrentZone.TryGetValue(agentId, out previous);
+
+        if (hadPrevious && previous == zoneName) return;
+
+        agentCurrentZone[agentId] = zoneName;
+        agentEntryTime[agentId] = Time.time;
+
+        if (hadPrevious)
         {
-            if (previous == zoneName) return;
             CloseHistory(agentId, previous);
             CreateZoneOccupancyRecord(previous, agentId, "Exit", 0f, Time.time);
         }
 
-        agentCurrentZone[agentId] = zoneName;
-        agentEntryTime[agentId] = Time.time;
         CreateZoneOccupancyRecord(zoneName, agentId, "Enter", Time.time, 0f);
     }
 
@@ -392,10 +380,11 @@ public class ZoneOccupancy : MonoBehaviour
             : eventType == "ForcedExit" ? "Agent exited zone (destroyed on exit/trapped)"
             : "Agent exited zone";
 
-        string path = CsvFilePath;
-        string header = BuildCsvHeader();
-        EnsureCsvHeader(path, header);
+        // Goes into the main jsonl log, which is what the dashboard reads and what
+        // the Stop button downloads.
+        SimulationLogger.WriteRecord(record);
 
+        // Also kept as a CSV row in memory, for anyone who wants the flat format.
         List<string> fields = new List<string>
         {
             record.sensorId,
@@ -417,7 +406,7 @@ public class ZoneOccupancy : MonoBehaviour
         foreach (string z in zoneOrder)
             fields.Add(CountIn(z).ToString());
 
-        File.AppendAllText(path, string.Join(",", fields) + "\n");
+        csvRows.Add(string.Join(",", fields));
     }
 
     private static string BuildCsvHeader()
@@ -427,22 +416,17 @@ public class ZoneOccupancy : MonoBehaviour
         return zoneColumns.Length > 0 ? baseHeader + "," + zoneColumns : baseHeader;
     }
 
-    private static void EnsureCsvHeader(string path, string header)
+    /// <summary>
+    /// The whole run as a CSV string, header included. Nothing is written to disk,
+    /// so this is safe in WebGL. Call it if you ever want a CSV download alongside
+    /// the jsonl one.
+    /// </summary>
+    public static string GetCsv()
     {
-        if (!File.Exists(path))
-        {
-            File.WriteAllText(path, header + "\n");
-            return;
-        }
-
-        string[] existingLines = File.ReadAllLines(path);
-        if (existingLines.Length == 0 || existingLines[0] != header)
-        {
-            string backupPath = path + ".old";
-            if (File.Exists(backupPath)) File.Delete(backupPath);
-
-            File.Move(path, backupPath);
-            File.WriteAllText(path, header + "\n");
-        }
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.Append(BuildCsvHeader()).Append('\n');
+        foreach (string row in csvRows)
+            sb.Append(row).Append('\n');
+        return sb.ToString();
     }
 }

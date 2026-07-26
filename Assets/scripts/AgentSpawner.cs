@@ -1,10 +1,20 @@
 // AgentSpawner.cs
-// NEW FILE. One in the scene.
+// One in the scene.
 //
 // Spawns agents from a single prefab, scattered across the zone box colliders and
 // snapped to the NavMesh. The count updates live as the user drags the slider, and
 // the age and disability split is applied as exact counts, not random chances, so
 // the percentages are respected precisely.
+//
+// CHANGES IN THIS VERSION
+//   - Zones whose name matches the exclusion list are no longer used as spawn
+//     areas. The exit markers are tagged Zone so that occupancy tracking still
+//     counts agents reaching them, but they sit outside the building, so agents
+//     were legitimately spawning in the grass.
+//   - The point returned by NavMesh.SamplePosition is now checked to make sure it
+//     is still inside the zone collider. Sampling uses axis aligned bounds, which
+//     extend past the real room on angled walls, and the snap itself can pull a
+//     point up to sampleRadius away.
 using UnityEngine;
 using UnityEngine.AI;
 using System.Collections.Generic;
@@ -25,9 +35,18 @@ public class AgentSpawner : MonoBehaviour
 
     [Header("Spawning")]
     public string zoneTag = "Zone";
+
+    [Tooltip("Zones whose name starts with any of these are never used for spawning. Case is ignored.")]
+    public List<string> excludedZonePrefixes = new List<string> { "Exit" };
+
     [Tooltip("Tries per agent to find a spot on the NavMesh inside a zone.")]
     public int samplePositionTries = 12;
-    public float sampleRadius = 3f;
+
+    [Tooltip("How far the sampled point may be pulled to reach the NavMesh. Keep small so agents do not snap through walls.")]
+    public float sampleRadius = 1f;
+
+    [Tooltip("Log which zones were used and which were excluded, once at startup.")]
+    public bool logZoneSelection = true;
 
     private readonly List<GameObject> spawned = new List<GameObject>();
     private readonly List<Collider> zoneColliders = new List<Collider>();
@@ -48,17 +67,27 @@ public class AgentSpawner : MonoBehaviour
         );
     }
 
-    // Every box collider on every object tagged Zone is a place agents can appear.
-    // Bigger rooms get proportionally more people through area weighting.
+    // Every collider on every object tagged Zone is a place agents can appear,
+    // unless the zone name is excluded. Bigger rooms get proportionally more
+    // people through area weighting.
     void CollectZones()
     {
         zoneColliders.Clear();
         zoneWeights.Clear();
         totalWeight = 0f;
 
+        List<string> used = new List<string>();
+        List<string> skipped = new List<string>();
+
         GameObject[] zones = GameObject.FindGameObjectsWithTag(zoneTag);
         foreach (GameObject z in zones)
         {
+            if (IsExcluded(z.name))
+            {
+                skipped.Add(z.name);
+                continue;
+            }
+
             foreach (Collider col in z.GetComponents<Collider>())
             {
                 if (col == null) continue;
@@ -68,7 +97,32 @@ public class AgentSpawner : MonoBehaviour
                 zoneWeights.Add(area);
                 totalWeight += area;
             }
+
+            used.Add(z.name);
         }
+
+        if (logZoneSelection)
+        {
+            Debug.Log("AgentSpawner spawn zones: " + string.Join(", ", used));
+            if (skipped.Count > 0)
+                Debug.Log("AgentSpawner excluded zones: " + string.Join(", ", skipped));
+        }
+    }
+
+    // Matches on prefix rather than exact name, so Exit 1, Exit 2, and Exit 3 are
+    // all covered by the single entry "Exit".
+    bool IsExcluded(string zoneName)
+    {
+        if (string.IsNullOrEmpty(zoneName)) return false;
+
+        foreach (string prefix in excludedZonePrefixes)
+        {
+            if (string.IsNullOrEmpty(prefix)) continue;
+            if (zoneName.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     public int SpawnedCount => spawned.Count;
@@ -151,15 +205,34 @@ public class AgentSpawner : MonoBehaviour
                 Random.Range(b.min.z, b.max.z)
             );
 
-            if (NavMesh.SamplePosition(p, out NavMeshHit hit, sampleRadius, NavMesh.AllAreas))
-            {
-                result = hit.position;
-                return true;
-            }
+            if (!NavMesh.SamplePosition(p, out NavMeshHit hit, sampleRadius, NavMesh.AllAreas))
+                continue;
+
+            // The snapped point may have moved outside the room, and the random
+            // point itself may have come from the corner of an axis aligned box
+            // that sits beyond an angled wall. Reject anything not still inside.
+            if (!IsInsideCollider(c, hit.position)) continue;
+
+            result = hit.position;
+            return true;
         }
 
         result = Vector3.zero;
         return false;
+    }
+
+    // ClosestPoint returns the point itself only when the point is inside the
+    // collider. Non convex mesh colliders do not support it, so those fall back to
+    // a bounds test, which is the best available.
+    bool IsInsideCollider(Collider col, Vector3 point)
+    {
+        if (col == null) return false;
+
+        MeshCollider mc = col as MeshCollider;
+        if (mc != null && !mc.convex)
+            return col.bounds.Contains(point);
+
+        return (col.ClosestPoint(point) - point).sqrMagnitude < 0.01f;
     }
 
     Collider PickWeightedZone()
