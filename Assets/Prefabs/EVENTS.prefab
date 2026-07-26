@@ -47,11 +47,11 @@ MonoBehaviour:
   tickInterval: 0.4
   fireSpread: {fileID: 0}
   exitApproaches:
-  - exitName: Exit (1)
+  - exitName: Exit 1
     approachZone: {fileID: 0}
-  - exitName: Exit (2)
+  - exitName: Exit 2
     approachZone: {fileID: 0}
-  - exitName: Exit (3)
+  - exitName: Exit 3
     approachZone: {fileID: 0}
 --- !u!1 &1036268871010652537
 GameObject:

@@ -9,6 +9,12 @@
 //     that spawned during setup still records its profile the moment the run starts.
 //   - ResetCounters lets the Stop button clear the running totals so the next run
 //     starts from zero without reloading the scene.
+//   - WriteLifecycleRecord now takes the location to log as a parameter instead of
+//     always using currentZone. currentZone is usually already "Transition" by the
+//     moment an agent reaches an exit (it flips the instant they leave the last
+//     zone trigger), so exits were being logged with the wrong location even though
+//     the real exit name was already sitting in the details text. Exits now pass
+//     the actual exit name; traps still pass currentZone, which is correct there.
 using UnityEngine;
 using UnityEngine.AI;
 using TMPro;
@@ -177,7 +183,7 @@ public class AgentDataTracker : MonoBehaviour
             " | Visibility damage taken: " + visibilityDamageTotal.ToString("F1") +
             " | Path: " + string.Join(" > ", pathHistory);
 
-        WriteLifecycleRecord(details);
+        WriteLifecycleRecord(details, exitName);
 
         ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);
         Destroy(gameObject);
@@ -207,7 +213,7 @@ public class AgentDataTracker : MonoBehaviour
             " | Survived: " + Time.time.ToString("F1") + " seconds" +
             " | Path: " + string.Join(" > ", pathHistory);
 
-        WriteLifecycleRecord(details);
+        WriteLifecycleRecord(details, currentZone);
 
         ZoneOccupancy.ForceRemoveAgent(currentZone, agentId);
         Destroy(gameObject);
@@ -252,14 +258,14 @@ public class AgentDataTracker : MonoBehaviour
         SimulationLogger.WriteRecord(record);
     }
 
-    private void WriteLifecycleRecord(string details)
+    private void WriteLifecycleRecord(string details, string location)
     {
         if (string.IsNullOrEmpty(SimulationLogger.filePath)) return;
 
         SimulationRecord record = new SimulationRecord(
             id: "LIFECYCLE-" + agentId,
             type: SensorType.AgentTelemetry,
-            loc: currentZone,
+            loc: location,
             time: Time.time,
             tick: -1
         );
