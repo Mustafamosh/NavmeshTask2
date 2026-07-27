@@ -1,0 +1,31 @@
+sensorId,sensorTypeString,location,timestamp,tickNumber,value,agentId,speed,hasExited,timeEnteringZone,exitTime,eventDetails,totalAgentsExited,zoneCount,zone_Exit_1,zone_Exit_2,zone_Exit_3,zone_Hallway_3,zone_Hallway_2,zone_Hallway_1,zone_Offices_7,zone_Offices_6,zone_Offices_5,zone_Offices_4,zone_Offices_3,zone_Offices_2,zone_Offices_1,zone_Bathrooms,zone_Classroom,zone_Main_Hall
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,0,0,1,Agent-12,0,False,0,0,Agent entered zone,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,0,1,2,Agent-3,0,False,0,0,Agent entered zone,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,0,2,3,Agent-1,0,False,0,0,Agent entered zone,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,0,3,4,Agent-5,0,False,0,0,Agent entered zone,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,0,4,5,Agent-9,0,False,0,0,Agent entered zone,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,0,5,6,Agent-7,0,False,0,0,Agent entered zone,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,0,6,7,Agent-6,0,False,0,0,Agent entered zone,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0
+ZONE-Offices 7-Enter,ZoneOccupancy,Offices 7,0,7,1,Agent-11,0,False,0,0,Agent entered zone,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,7,0
+ZONE-Bathrooms-Enter,ZoneOccupancy,Bathrooms,0,8,1,Agent-8,0,False,0,0,Agent entered zone,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,7,0
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,9,1,Agent-10,0,False,0,0,Agent entered zone,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,7,1
+ZONE-Main Hall-Enter,ZoneOccupancy,Main Hall,0,10,2,Agent-13,0,False,0,0,Agent entered zone,0,2,0,0,0,0,0,0,1,0,0,0,0,0,0,1,7,2
+ZONE-Hallway 2-Enter,ZoneOccupancy,Hallway 2,0,11,1,Agent-2,0,False,0,0,Agent entered zone,0,1,0,0,0,0,1,0,1,0,0,0,0,0,0,1,7,2
+ZONE-Offices 4-Enter,ZoneOccupancy,Offices 4,0,12,1,Agent-4,0,False,0,0,Agent entered zone,0,1,0,0,0,0,1,0,1,0,0,1,0,0,0,1,7,2
+ZONE-Offices 2-Enter,ZoneOccupancy,Offices 2,0,13,1,Agent-0,0,False,0,0,Agent entered zone,0,1,0,0,0,0,1,0,1,0,0,1,0,1,0,1,7,2
+ZONE-Exit 2-Enter,ZoneOccupancy,Exit 2,0,14,1,Agent-2,0,False,0,0,Agent entered zone,0,1,0,1,0,0,1,0,1,0,0,1,0,1,0,1,7,2
+ZONE-Exit 2-Exit,ZoneOccupancy,Exit 2,0.2999999,15,0,Agent-2,0,True,0,0.2999999,Agent exited zone,0,0,0,0,0,0,1,0,1,0,0,1,0,1,0,1,7,2
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,0.6399997,16,1,Agent-4,0,False,0.6399997,0,Agent entered zone,0,1,0,0,0,1,1,0,1,0,0,1,0,1,0,1,7,2
+ZONE-Offices 3-Enter,ZoneOccupancy,Offices 3,1.04,17,1,Agent-4,0,False,1.04,0,Agent entered zone,0,1,0,0,0,1,1,0,1,0,0,1,1,1,0,1,7,2
+ZONE-Offices 4-Exit,ZoneOccupancy,Offices 4,1.06,18,0,Agent-4,0,True,0,1.06,Agent exited zone,0,0,0,0,0,1,1,0,1,0,0,0,1,1,0,1,7,2
+ZONE-Offices 3-Exit,ZoneOccupancy,Offices 3,1.479999,19,0,Agent-4,0,True,0,1.479999,Agent exited zone,0,0,0,0,0,1,1,0,1,0,0,0,0,1,0,1,7,2
+ZONE-Bathrooms-Exit,ZoneOccupancy,Bathrooms,1.579999,20,0,Agent-8,0,True,0,1.579999,Agent exited zone,0,0,0,0,0,1,1,0,1,0,0,0,0,1,0,0,7,2
+ZONE-Hallway 1-Enter,ZoneOccupancy,Hallway 1,2.919999,21,1,Agent-7,0,False,2.919999,0,Agent entered zone,0,1,0,0,0,1,1,1,1,0,0,0,0,1,0,0,7,2
+ZONE-Classroom-Exit,ZoneOccupancy,Classroom,3.439999,22,6,Agent-7,0,True,0,3.439999,Agent exited zone,0,6,0,0,0,1,1,1,1,0,0,0,0,1,0,0,6,2
+ZONE-Offices 3-Enter,ZoneOccupancy,Offices 3,4.159998,23,1,Agent-4,0,False,4.159998,0,Agent entered zone,0,1,0,0,0,1,1,1,1,0,0,0,1,1,0,0,6,2
+ZONE-Hallway 3-Exit,ZoneOccupancy,Hallway 3,4.659998,24,0,Agent-4,0,True,0,4.659998,Agent exited zone,0,0,0,0,0,0,1,1,1,0,0,0,1,1,0,0,6,2
+ZONE-Bathrooms-Enter,ZoneOccupancy,Bathrooms,6.759997,25,1,Agent-8,0,False,6.759997,0,Agent entered zone,0,1,0,0,0,0,6,0,6,0,0,0,6,6,0,1,36,6
+ZONE-Hallway 1-Exit,ZoneOccupancy,Hallway 1,7.159997,26,-1,Agent-7,0,True,0,7.159997,Agent exited zone,0,-1,0,0,0,0,6,-1,6,0,0,0,6,6,0,1,36,6
+ZONE-Classroom-Exit,ZoneOccupancy,Classroom,7.539997,27,35,Agent-1,0,True,0,7.539997,Agent exited zone,0,35,0,0,0,0,6,-1,6,0,0,0,6,6,0,1,35,6
+ZONE-Hallway 3-Enter,ZoneOccupancy,Hallway 3,8.999997,28,1,Agent-4,0,False,8.999997,0,Agent entered zone,0,1,0,0,0,1,6,-1,6,0,0,0,6,6,0,1,35,6
+ZONE-Classroom-Enter,ZoneOccupancy,Classroom,9.099997,29,36,Agent-1,0,False,9.099997,0,Agent entered zone,0,36,0,0,0,1,6,-1,6,0,0,0,6,6,0,1,36,6
