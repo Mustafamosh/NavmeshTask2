@@ -77,7 +77,7 @@ public class ObstacleManager : MonoBehaviour
 
     private GameObject[] FindHighlightObjects()
     {
-        GameObject[] allObjects = FindObjectsOfType<GameObject>();
+        GameObject[] allObjects = FindObjectsByType<GameObject>();
         System.Collections.Generic.List<GameObject> found = new System.Collections.Generic.List<GameObject>();
 
         foreach (GameObject obj in allObjects)
@@ -157,6 +157,48 @@ public class ObstacleManager : MonoBehaviour
         {
             child.gameObject.SetActive(newState);
         }
+
+        string obstacleName = GetObstacleDisplayName(highlightRoot.name);
+        string action = newState ? "enabled" : "disabled";
+        string details = $"Obstacle {action}: {obstacleName}";
+
+        SimulationLogger.LogEvent(
+            "EVENT-" + obstacleName.Replace(" ", "-"),
+            obstacleName,
+            details,
+            Time.time,
+            -1,
+            SensorType.Obstacle
+        );
+    }
+
+    private string GetObstacleDisplayName(string sourceName)
+    {
+        if (string.IsNullOrWhiteSpace(sourceName))
+            return "Obstacle 1";
+
+        string trimmedName = sourceName.Trim();
+        if (trimmedName.Equals("Highlight", System.StringComparison.OrdinalIgnoreCase))
+            return "Obstacle 1";
+
+        if (trimmedName.StartsWith("Highlight", System.StringComparison.OrdinalIgnoreCase))
+        {
+            string suffix = trimmedName.Substring("Highlight".Length).Trim();
+            if (string.IsNullOrEmpty(suffix))
+                return "Obstacle 1";
+
+            if (suffix.StartsWith("(") && suffix.EndsWith(")"))
+            {
+                string numberText = suffix.Substring(1, suffix.Length - 2).Trim();
+                if (int.TryParse(numberText, out int suffixNumber))
+                    return "Obstacle " + (suffixNumber + 1);
+            }
+
+            if (int.TryParse(suffix, out int numericSuffix))
+                return "Obstacle " + (numericSuffix + 1);
+        }
+
+        return trimmedName;
     }
 
     private bool IsHighlight(GameObject obj)

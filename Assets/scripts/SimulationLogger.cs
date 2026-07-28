@@ -263,9 +263,9 @@ public class SimulationLogger : MonoBehaviour
         buffer.Add(JsonUtility.ToJson(record));
     }
 
-    public static void LogEvent(string id, string location, string details, float time, int tick)
+    public static void LogEvent(string id, string location, string details, float time, int tick, SensorType sensorType = SensorType.SimulationEvent)
     {
-        SimulationRecord ev = new SimulationRecord(id, SensorType.SimulationEvent, location, time, tick);
+        SimulationRecord ev = new SimulationRecord(id, sensorType, location, time, tick);
         ev.eventDetails = details;
         WriteRecord(ev);
     }
