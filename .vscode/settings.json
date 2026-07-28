@@ -67,6 +67,6 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "ResearchCo-op.slnx",
+    "dotnet.defaultSolution": "NavmeshInt.slnx",
     "dotnet.enableWorkspaceBasedDevelopment": false
 }

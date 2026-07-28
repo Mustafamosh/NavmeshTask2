@@ -14,7 +14,8 @@ public enum SensorType
     SimulationEvent,
     Hazard,
     AgentProfile,
-    StructuralDamage
+    StructuralDamage,
+    Obstacle
 }
 
 /// <summary>
