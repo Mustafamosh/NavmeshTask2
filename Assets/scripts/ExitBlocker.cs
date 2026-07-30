@@ -54,10 +54,10 @@ public class ExitBlocker : MonoBehaviour
     void Log(string exitName, bool blocked)
     {
         string details = blocked
-            ? (exitName + " blocked by an obstacle the user placed at T=" + Time.time.ToString("F1"))
-            : (exitName + " obstacle removed by the user at T=" + Time.time.ToString("F1"));
+            ? (exitName + " blocked by an obstacle the user placed at T=" + SimulationLogger.GetSimulationTime().ToString("F1"))
+            : (exitName + " obstacle removed by the user at T=" + SimulationLogger.GetSimulationTime().ToString("F1"));
 
-        SimulationLogger.LogEvent("EVENT-UserBlock-" + exitName, exitName, details, Time.time, -1);
+        SimulationLogger.LogEvent("EVENT-UserBlock-" + exitName, exitName, details, SimulationLogger.GetSimulationTime(), -1);
     }
 
     public void UnblockAll()

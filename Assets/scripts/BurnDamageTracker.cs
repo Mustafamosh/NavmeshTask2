@@ -93,7 +93,7 @@ public class BurnDamageTracker : MonoBehaviour
                 id: "DMG-" + zone,
                 type: SensorType.StructuralDamage,
                 loc: zone,
-                time: Time.time,
+                time: SimulationLogger.GetSimulationTime(),
                 tick: -1
             );
 
@@ -137,7 +137,7 @@ public class BurnDamageTracker : MonoBehaviour
             "EVENT-Damage-" + zone,
             zone,
             zone + " is now " + label + " | Average char: " + (avgChar * 100f).ToString("F0") + " percent",
-            Time.time,
+            SimulationLogger.GetSimulationTime(),
             -1
         );
     }

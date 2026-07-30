@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -10,6 +11,7 @@ public class ObstacleManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI placementModeText = null;
 
     private GameObject[] highlightObjects;
+    private Coroutine toggleFeedbackCoroutine;
 
     private void Start()
     {
@@ -162,14 +164,38 @@ public class ObstacleManager : MonoBehaviour
         string action = newState ? "enabled" : "disabled";
         string details = $"Obstacle {action}: {obstacleName}";
 
+        if (toggleFeedbackCoroutine != null)
+            StopCoroutine(toggleFeedbackCoroutine);
+
+        toggleFeedbackCoroutine = StartCoroutine(PlayToggleFeedback(highlightRoot.transform));
+
         SimulationLogger.LogEvent(
             "EVENT-" + obstacleName.Replace(" ", "-"),
             obstacleName,
             details,
-            Time.time,
+            SimulationLogger.GetSimulationTime(),
             -1,
             SensorType.Obstacle
         );
+    }
+
+    private IEnumerator PlayToggleFeedback(Transform target)
+    {
+        if (target == null)
+            yield break;
+
+        Vector3 originalScale = target.localScale;
+        Vector3 pulseScale = originalScale * 1.12f;
+
+        target.localScale = pulseScale;
+        yield return new WaitForSeconds(0.08f);
+        target.localScale = originalScale;
+        yield return new WaitForSeconds(0.08f);
+        target.localScale = pulseScale;
+        yield return new WaitForSeconds(0.08f);
+        target.localScale = originalScale;
+
+        toggleFeedbackCoroutine = null;
     }
 
     private string GetObstacleDisplayName(string sourceName)

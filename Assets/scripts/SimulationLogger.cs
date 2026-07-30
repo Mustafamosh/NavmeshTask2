@@ -24,6 +24,7 @@ public class SimulationLogger : MonoBehaviour
 
     // Every record written during the current run, one json object per entry.
     private static readonly List<string> buffer = new List<string>();
+    private static float runStartTime = 0f;
 
     private bool alarmLogged = false;
 
@@ -70,17 +71,29 @@ public class SimulationLogger : MonoBehaviour
     {
         buffer.Clear();
 
+        runStartTime = Time.time;
         tickTimer = 0f;
         tickNumber = 0;
         alarmLogged = false;
         approachBlocked.Clear();
         IsLogging = true;
+
+        SimulationRecord startRecord = new SimulationRecord("EVENT-RunStart", SensorType.SimulationEvent, "Global", 0f, 0);
+        startRecord.eventDetails = "Simulation run started";
+        WriteRecord(startRecord);
     }
 
     // Called by the controller on Stop.
     public void StopLogging()
     {
         IsLogging = false;
+        runStartTime = 0f;
+    }
+
+    public static float GetSimulationTime()
+    {
+        if (!IsLogging) return 0f;
+        return Time.time - runStartTime;
     }
 
     /// <summary>
@@ -132,7 +145,7 @@ public class SimulationLogger : MonoBehaviour
 
     void LogTick()
     {
-        float timestamp = Time.time;
+        float timestamp = GetSimulationTime();
 
         Dictionary<string, int> zoneCounts = ZoneOccupancy.GetZoneCounts();
         foreach (var zone in zoneCounts)
@@ -265,7 +278,7 @@ public class SimulationLogger : MonoBehaviour
 
     public static void LogEvent(string id, string location, string details, float time, int tick, SensorType sensorType = SensorType.SimulationEvent)
     {
-        SimulationRecord ev = new SimulationRecord(id, sensorType, location, time, tick);
+        SimulationRecord ev = new SimulationRecord(id, sensorType, location, GetSimulationTime(), tick);
         ev.eventDetails = details;
         WriteRecord(ev);
     }

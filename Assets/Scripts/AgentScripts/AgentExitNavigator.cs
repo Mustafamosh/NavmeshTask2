@@ -184,7 +184,7 @@ public class AgentExitNavigator : MonoBehaviour
                 " | Disability: " + tracker.spawnDisability +
                 " | Mobility: " + tracker.mobilityStatus +
                 " | Health: " + tracker.health.ToString("F1"),
-                Time.time,
+                SimulationLogger.GetSimulationTime(),
                 0
             );
         }
@@ -286,7 +286,7 @@ public class AgentExitNavigator : MonoBehaviour
                 "EVENT-Flee-" + id,
                 zone,
                 id + " had no exit path, moving away from fire" + extra,
-                Time.time,
+                SimulationLogger.GetSimulationTime(),
                 0
             );
         }

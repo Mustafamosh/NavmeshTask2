@@ -30,7 +30,7 @@ public class SimulationRecord
     public SensorType sensorType;   // Enum for Unity logic
     public string sensorTypeString; // String form for clean JSON output
     public string location;         // Room or zone name
-    public float timestamp;         // Real time seconds, from Time.time
+    public float timestamp;         // Simulation-relative seconds, starting at 0 for a run
     public int tickNumber;          // Internal simulation sync tick
 
     // --- 2. Sensor Fields ---

@@ -366,7 +366,7 @@ public class ZoneOccupancy : MonoBehaviour
             id: $"ZONE-{zoneName}-{eventType}",
             type: SensorType.ZoneOccupancy,
             loc: zoneName,
-            time: Time.time,
+            time: SimulationLogger.GetSimulationTime(),
             tick: tickNumber++
         );
 

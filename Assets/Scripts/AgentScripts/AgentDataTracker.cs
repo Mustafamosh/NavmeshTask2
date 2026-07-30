@@ -210,7 +210,7 @@ public class AgentDataTracker : MonoBehaviour
             " | Fire damage taken: " + fireDamage.ToString("F1") +
             " | Visibility damage taken: " + visibilityDamage.ToString("F1") +
             " | Distance to nearest fire: " + distanceToFire.ToString("F2") +
-            " | Survived: " + Time.time.ToString("F1") + " seconds" +
+            " | Survived: " + SimulationLogger.GetSimulationTime().ToString("F1") + " seconds" +
             " | Path: " + string.Join(" > ", pathHistory);
 
         WriteLifecycleRecord(details, currentZone);
@@ -237,7 +237,7 @@ public class AgentDataTracker : MonoBehaviour
             id: "PROFILE-" + agentId,
             type: SensorType.AgentProfile,
             loc: currentZone,
-            time: Time.time,
+            time: SimulationLogger.GetSimulationTime(),
             tick: -1
         );
 
@@ -266,7 +266,7 @@ public class AgentDataTracker : MonoBehaviour
             id: "LIFECYCLE-" + agentId,
             type: SensorType.AgentTelemetry,
             loc: location,
-            time: Time.time,
+            time: SimulationLogger.GetSimulationTime(),
             tick: -1
         );
 
