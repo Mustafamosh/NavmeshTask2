@@ -168,7 +168,7 @@ public class AgentDataTracker : MonoBehaviour
         lifecycleEnded = true;
 
         hasExited = true;
-        exitTime = Time.time;
+        exitTime = SimulationLogger.GetSimulationTime();
         agentsExited++;
 
         pathHistory.Add("Exited via " + exitName + " | T=" + exitTime.ToString("F2"));
